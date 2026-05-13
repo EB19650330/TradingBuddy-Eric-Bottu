@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>CC Swing Bot</title>
+<meta name="viewport" content="width=660">
+<style>
+:root{
+  --tg-bg:#0E1621;
+  --tg-chat:#17212B;
+  --tg-bubble-in:#182533;
+  --tg-bubble-out:#2B5278;
+  --tg-accent:#2AABEE;
+  --tg-accent-2:#229ED9;
+  --tg-text:#FFFFFF;
+  --tg-text-2:#E1E1E1;
+  --tg-muted:#708499;
+  --tg-divider:#1B2734;
+  --tg-hover:#202B36;
+  --tg-green:#4FAE4E;
+  --tg-red:#E53935;
+  --tg-warn:#F5A623;
+  --tg-link:#7BC3FF;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{background:#000;min-height:100vh}
+body{
+  background:#000;
+  color:var(--tg-text);
+  font-family:var(--font);
+  font-size:14px;
+  line-height:1.4;
+  -webkit-font-smoothing:antialiased;
+  display:flex;
+  justify-content:center;
+  padding:24px 0;
+}
+
+/* === 660px Telegram window === */
+.window{
+  width:660px;
+  min-height:calc(100vh - 48px);
+  background:var(--tg-bg);
+  border-radius:10px;
+  overflow:hidden;
+  display:flex;flex-direction:column;
+  box-shadow:0 8px 40px rgba(0,0,0,.6);
+}
+
+/* === Header (chat header) === */
+.head{
+  background:var(--tg-chat);
+  padding:10px 16px;
+  display:flex;align-items:center;gap:12px;
+  border-bottom:1px solid var(--tg-divider);
+  flex-shrink:0;
+}
+.avatar{
+  width:42px;height:42px;border-radius:50%;
+  background:linear-gradient(135deg,#2AABEE 0%,#229ED9 100%);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:600;font-size:16px;color:#fff;
+  letter-spacing:.5px;
+}
+.head-info{flex:1;min-width:0}
+.head-name{font-weight:500;font-size:15px;letter-spacing:.1px}
+.head-status{font-size:13px;color:var(--tg-muted)}
+.head-status.online{color:var(--tg-accent)}
+.head-actions{display:flex;gap:4px}
+.icon-btn{
+  background:none;border:none;color:var(--tg-muted);
+  width:36px;height:36px;border-radius:50%;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:18px;transition:background .15s;
+}
+.icon-btn:hover{background:var(--tg-hover);color:var(--tg-text)}
+
+/* === Filter pills === */
+.filters{
+  background:var(--tg-chat);
+  padding:8px 16px 10px;
+  display:flex;gap:6px;
+  border-bottom:1px solid var(--tg-divider);
+  overflow-x:auto;
+}
+.filter{
+  font-size:12px;font-weight:500;
+  padding:6px 12px;border-radius:14px;
+  background:var(--tg-bubble-in);
+  color:var(--tg-text-2);
+  cursor:pointer;border:none;
+  white-space:nowrap;
+  transition:background .15s;
+}
+.filter:hover{background:var(--tg-hover)}
+.filter.active{background:var(--tg-accent);color:#fff}
+.filter .count{
+  display:inline-block;margin-left:4px;
+  background:rgba(255,255,255,.18);
+  padding:1px 6px;border-radius:8px;font-size:11px;
+}
+
+/* === Status bar === */
+.statusbar{
+  background:var(--tg-chat);
+  padding:6px 16px;
+  font-size:11px;
+  color:var(--tg-muted);
+  display:flex;justify-content:space-between;align-items:center;
+  border-bottom:1px solid var(--tg-divider);
+}
+.statusbar .right{display:flex;gap:14px}
+.statusbar .v{color:var(--tg-text-2)}
+.statusbar .v.up{color:var(--tg-green)}
+.statusbar .v.dn{color:var(--tg-red)}
+
+/* === Chat feed === */
+.feed{
+  flex:1;
+  background:var(--tg-bg);
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(42,171,238,.03) 0, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(43,82,120,.04) 0, transparent 50%);
+  padding:16px 14px 90px;
+  overflow-y:auto;
+  scroll-behavior:smooth;
+}
+.feed-date{
+  text-align:center;
+  margin:6px 0 14px;
+}
+.feed-date span{
+  display:inline-block;
+  background:rgba(36,47,61,.85);
+  padding:4px 12px;
+  border-radius:11px;
+  font-size:11px;
+  color:var(--tg-text-2);
+  font-weight:500;
+}
+
+/* === Bot message bubble === */
+.msg{
+  display:flex;gap:8px;
+  margin-bottom:10px;
+  max-width:560px;
+}
+.msg-avatar{
+  width:32px;height:32px;border-radius:50%;
+  background:linear-gradient(135deg,#2AABEE 0%,#229ED9 100%);
+  flex-shrink:0;
+  align-self:flex-end;
+}
+.bubble{
+  background:var(--tg-bubble-in);
+  border-radius:6px 12px 12px 6px;
+  padding:8px 12px 6px;
+  max-width:520px;
+  position:relative;
+}
+.bubble.first{border-top-left-radius:12px}
+.bubble.last{border-bottom-left-radius:12px}
+.msg-author{
+  font-size:13px;font-weight:600;color:var(--tg-accent);
+  margin-bottom:2px;
+}
+
+/* setup card layout inside bubble */
+.setup-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px}
+.setup-sym{
+  font-size:17px;font-weight:600;
+  display:flex;align-items:baseline;gap:6px;
+}
+.setup-sym .quote{font-size:13px;font-weight:400;color:var(--tg-muted)}
+.setup-meta{text-align:right;font-size:12px;color:var(--tg-muted)}
+.setup-meta .price{display:block;font-size:14px;color:var(--tg-text);font-weight:500;font-variant-numeric:tabular-nums}
+.setup-meta .chg{font-variant-numeric:tabular-nums}
+.setup-meta .chg.up{color:var(--tg-green)}
+.setup-meta .chg.dn{color:var(--tg-red)}
+
+.score-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 9px;border-radius:11px;
+  font-size:12px;font-weight:600;
+  margin-bottom:8px;
+}
+.score-badge.s-strong{background:rgba(79,174,78,.18);color:#7BD37B}
+.score-badge.s-mid{background:rgba(245,166,35,.18);color:var(--tg-warn)}
+.score-badge.s-low{background:rgba(229,57,53,.18);color:#FF8884}
+
+.setup-line{
+  font-size:13px;color:var(--tg-text-2);
+  margin-bottom:3px;
+  display:flex;gap:6px;align-items:baseline;
+}
+.setup-line .lbl{color:var(--tg-muted);min-width:74px;font-size:12px}
+.setup-line .v{flex:1;font-variant-numeric:tabular-nums}
+.setup-line .v.up{color:var(--tg-green)}
+.setup-line .v.dn{color:var(--tg-red)}
+.setup-line .v.warn{color:var(--tg-warn)}
+
+.checks{
+  display:flex;flex-wrap:wrap;gap:4px;
+  margin:8px 0 6px;
+}
+.chk{
+  font-size:11px;padding:2px 8px;border-radius:10px;
+  background:rgba(255,255,255,.05);color:var(--tg-muted);
+  display:inline-flex;align-items:center;gap:4px;
+}
+.chk.ok{background:rgba(79,174,78,.16);color:#7BD37B}
+.chk.mid{background:rgba(245,166,35,.16);color:var(--tg-warn)}
+.chk.no{background:rgba(229,57,53,.10);color:#C2645F;text-decoration:line-through;opacity:.55}
+
+/* trade plan inside bubble — quote block style */
+.plan-block{
+  margin-top:8px;
+  border-left:3px solid var(--tg-accent);
+  padding:6px 10px;
+  background:rgba(42,171,238,.04);
+  border-radius:0 6px 6px 0;
+}
+.plan-row{
+  display:flex;justify-content:space-between;
+  font-size:12.5px;padding:2px 0;
+  font-variant-numeric:tabular-nums;
+}
+.plan-row .lbl{color:var(--tg-muted)}
+.plan-row .v{color:var(--tg-text);font-weight:500}
+.plan-row .v.up{color:var(--tg-green)}
+.plan-row .v.dn{color:var(--tg-red)}
+.plan-row .v.warn{color:var(--tg-warn);text-decoration:line-through;text-decoration-color:rgba(245,166,35,.5)}
+
+.tp-warn{
+  display:inline-block;
+  background:rgba(245,166,35,.18);color:var(--tg-warn);
+  font-size:12px;padding:1px 7px;border-radius:8px;
+  margin-left:4px;font-weight:600;
+}
+.tp-warn-banner{
+  background:rgba(245,166,35,.10);
+  border:1px solid rgba(245,166,35,.3);
+  border-radius:7px;
+  padding:9px 11px;margin:8px 0;
+}
+.tp-warn-banner .warn-head{
+  color:var(--tg-warn);font-weight:600;font-size:12.5px;
+  margin-bottom:3px;
+}
+.tp-warn-banner .warn-body{
+  color:var(--tg-text-2);font-size:12px;line-height:1.5;
+}
+.bubble-btn.disabled,.bubble-btn:disabled{
+  color:var(--tg-muted);cursor:not-allowed;opacity:.6;
+}
+
+.bubble-actions{
+  display:flex;gap:6px;margin-top:8px;
+}
+.bubble-btn{
+  flex:1;
+  background:transparent;
+  border:none;
+  color:var(--tg-link);
+  font-size:13px;font-weight:500;
+  padding:6px 10px;border-radius:6px;
+  cursor:pointer;
+  transition:background .15s;
+  font-family:var(--font);
+}
+.bubble-btn:hover{background:rgba(123,195,255,.10)}
+
+.bubble-time{
+  font-size:11px;color:var(--tg-muted);
+  text-align:right;margin-top:4px;
+  font-variant-numeric:tabular-nums;
+}
+
+/* === Bot system message (centered notice) === */
+.notice{
+  text-align:center;
+  margin:10px 0;
+}
+.notice span{
+  display:inline-block;
+  background:rgba(36,47,61,.85);
+  padding:6px 14px;
+  border-radius:14px;
+  font-size:12px;
+  color:var(--tg-text-2);
+}
+
+/* === Progress message === */
+.progress-msg{
+  background:var(--tg-bubble-in);
+  border-radius:12px;
+  padding:12px 14px;
+  max-width:520px;
+  margin-bottom:10px;
+  margin-left:40px;
+}
+.progress-msg .title{font-size:13px;color:var(--tg-accent);font-weight:600;margin-bottom:6px}
+.progress-msg .label{font-size:12px;color:var(--tg-muted);margin-bottom:6px;font-variant-numeric:tabular-nums}
+.progress-msg .bar-track{height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
+.progress-msg .bar-fill{height:100%;background:var(--tg-accent);width:0%;transition:width .25s ease}
+
+/* === Empty state === */
+.empty-state{
+  text-align:center;
+  padding:60px 20px;
+  color:var(--tg-muted);
+}
+.empty-state .emoji{font-size:48px;margin-bottom:14px;opacity:.6}
+.empty-state .title{font-size:16px;color:var(--tg-text-2);margin-bottom:6px;font-weight:500}
+.empty-state .sub{font-size:13px;line-height:1.5;max-width:340px;margin:0 auto}
+
+/* === Bottom keyboard (Telegram bot keyboard) === */
+.keyboard{
+  background:var(--tg-chat);
+  border-top:1px solid var(--tg-divider);
+  padding:10px 12px;
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:6px;
+  flex-shrink:0;
+}
+.kb-btn{
+  background:var(--tg-bubble-in);
+  color:var(--tg-text-2);
+  border:none;
+  padding:11px 8px;
+  font-size:13px;font-weight:500;
+  border-radius:8px;
+  cursor:pointer;
+  font-family:var(--font);
+  transition:background .15s;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.kb-btn:hover{background:var(--tg-hover)}
+.kb-btn.primary{background:var(--tg-accent);color:#fff}
+.kb-btn.primary:hover{background:var(--tg-accent-2)}
+.kb-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* === Modal === */
+.modal-bg{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.7);
+  display:none;align-items:center;justify-content:center;
+  z-index:100;backdrop-filter:blur(4px);
+}
+.modal-bg.show{display:flex}
+.modal{
+  background:var(--tg-chat);
+  border-radius:10px;
+  width:520px;max-width:92vw;
+  max-height:88vh;overflow-y:auto;
+  padding:0;
+}
+.modal-head{
+  padding:16px 20px;
+  border-bottom:1px solid var(--tg-divider);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.modal-head h3{font-size:16px;font-weight:600}
+.modal-body{padding:18px 20px}
+.modal-body label{
+  display:block;font-size:12px;font-weight:500;
+  color:var(--tg-accent);
+  margin-bottom:6px;margin-top:14px;
+}
+.modal-body input{
+  width:100%;background:var(--tg-bg);
+  border:1px solid var(--tg-divider);
+  color:var(--tg-text);
+  padding:9px 12px;border-radius:8px;
+  font-size:14px;font-family:var(--font);
+}
+.modal-body input:focus{outline:none;border-color:var(--tg-accent)}
+.modal-body .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-body .row label{margin-top:14px}
+.modal-body .help{font-size:11px;color:var(--tg-muted);margin-top:5px;line-height:1.5}
+.modal-body .help a{color:var(--tg-link);text-decoration:none}
+.modal-body .check{
+  display:flex;align-items:center;gap:10px;
+  font-size:13px;color:var(--tg-text-2);
+  margin-top:16px;cursor:pointer;
+}
+.modal-body .check input{width:auto}
+.modal-foot{
+  padding:14px 20px;
+  border-top:1px solid var(--tg-divider);
+  display:flex;justify-content:flex-end;gap:8px;
+}
+
+/* toast */
+.toast{
+  position:fixed;
+  bottom:30px;left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:var(--tg-bubble-out);
+  color:#fff;
+  padding:10px 18px;
+  border-radius:20px;
+  font-size:13px;
+  opacity:0;
+  transition:all .25s;
+  z-index:200;
+  pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--tg-red)}
+
+/* details box for strategy */
+details.strat-info{
+  background:rgba(36,47,61,.5);
+  border-radius:8px;
+  margin:10px 0 16px;
+  font-size:12.5px;
+}
+details.strat-info summary{
+  padding:10px 14px;cursor:pointer;
+  font-weight:500;color:var(--tg-accent);
+  list-style:none;
+  display:flex;justify-content:space-between;
+}
+details.strat-info summary::after{content:'›';transform:rotate(90deg);transition:transform .2s}
+details.strat-info[open] summary::after{transform:rotate(-90deg)}
+details.strat-info .info-body{
+  padding:0 14px 12px;
+  color:var(--tg-text-2);
+  line-height:1.6;
+}
+details.strat-info ol{padding-left:18px;margin-top:6px}
+details.strat-info li{margin-bottom:4px}
+details.strat-info strong{color:var(--tg-text)}
+
+/* scrollbar */
+.feed::-webkit-scrollbar{width:6px}
+.feed::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+.feed::-webkit-scrollbar-track{background:transparent}
+</style>
+</head>
+<body>
+
+<div class="window">
+  <!-- Chat header -->
+  <div class="head">
+    <div class="avatar">CC</div>
+    <div class="head-info">
+      <div class="head-name">CC Swing Scanner</div>
+      <div class="head-status online" id="headStatus">bot · binance · long-only</div>
+    </div>
+    <div class="head-actions">
+      <button class="icon-btn" id="btnSettings" title="Instellingen">⚙</button>
+      <button class="icon-btn" id="btnInfo" title="Strategie">ℹ</button>
+    </div>
+  </div>
+
+  <!-- Filter pills -->
+  <div class="filters" id="filters">
+    <button class="filter active" data-f="all">Alles <span class="count" id="cAll">0</span></button>
+    <button class="filter" data-f="strong">⭐ Strong <span class="count" id="cStrong">0</span></button>
+    <button class="filter" data-f="watching">👀 Watching <span class="count" id="cWatch">0</span></button>
+    <button class="filter" data-f="setup">📍 Pullback <span class="count" id="cSetup">0</span></button>
+  </div>
+
+  <!-- Status bar -->
+  <div class="statusbar">
+    <div>BTC: <span class="v" id="sbBtc">—</span></div>
+    <div class="right">
+      <div>scanned: <span class="v" id="sbScanned">0</span></div>
+      <div>laatste: <span class="v" id="sbTime">—</span></div>
+    </div>
+  </div>
+
+  <!-- Feed -->
+  <div class="feed" id="feed">
+    <div class="feed-date"><span id="feedDate">vandaag</span></div>
+
+    <div class="msg">
+      <div class="msg-avatar"></div>
+      <div class="bubble">
+        <div class="msg-author">CC Swing Scanner</div>
+        <div style="font-size:13.5px;color:var(--tg-text-2);line-height:1.5">
+          👋 Welkom. Ik scan de Binance USDT-markt op <b>long-only swing setups</b> volgens de 6-stappen strategie:<br><br>
+          1. Bullish daily trend (&gt;EMA-200)<br>
+          2. Pullback naar support<br>
+          3. Bevestigingscandle<br>
+          4. Confluence ≥ 3 factoren<br>
+          5. Trade-plan met SL/TP/R/R<br>
+          6. Sizing-advies
+        </div>
+        <details class="strat-info" style="margin-top:10px">
+          <summary>Volledige strategie</summary>
+          <div class="info-body">
+            <ol>
+              <li><strong>Trend (1d/1w):</strong> prijs &gt; EMA-200, HH&amp;HL op 30d.</li>
+              <li><strong>Pullback (4h/1d):</strong> naar EMA-50/200 of fib 38.2/61.8. RSI 4h 35-45.</li>
+              <li><strong>Confirm-candle:</strong> groen, lange wick onder, slot bovenste 1/3, volume &gt; correctie.</li>
+              <li><strong>Confluence ≥ 3:</strong> MACD om · RSI uit oversold · Bullish div · Hogere low · BTC bullish · Geen bad news.</li>
+              <li><strong>Plan:</strong> entry, SL -3 tot -5%, TP1 swing-high (50% out), TP2 fib 1.618. Trail onder 20-EMA.</li>
+              <li><strong>Sizing:</strong> max 5%/trade. Sterk: 3-4% in 2-3 entries.</li>
+            </ol>
+            R/R 1:3 tot 1:5 · Win-rate 40-50%
+          </div>
+        </details>
+        <div style="font-size:13.5px;color:var(--tg-text-2);margin-top:8px">
+          Druk op <b>Scan starten</b> om te beginnen.
+        </div>
+        <div class="bubble-time" id="welcomeTime">—</div>
+      </div>
+    </div>
+
+    <div class="notice" id="noticeStart" style="display:none"><span>Scan gestart</span></div>
+  </div>
+
+  <!-- Bot keyboard -->
+  <div class="keyboard">
+    <button class="kb-btn primary" id="kbScan">🔍 Scan starten</button>
+    <button class="kb-btn" id="kbStrong">⭐ Strong only</button>
+    <button class="kb-btn" id="kbClear">🗑 Feed wissen</button>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>⚙ Instellingen</h3>
+      <button class="icon-btn" id="modalClose">×</button>
+    </div>
+    <div class="modal-body">
+      <label>Telegram bot token</label>
+      <input type="password" id="cfgToken" placeholder="123456789:AAH...">
+      <div class="help">Bot maken: <a href="https://t.me/BotFather" target="_blank">@BotFather</a></div>
+
+      <label>Telegram chat ID</label>
+      <input type="text" id="cfgChat" placeholder="123456789">
+      <div class="help">Eigen chat-id: <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a></div>
+
+      <div class="row">
+        <div>
+          <label>Min 24h volume (USDT)</label>
+          <input type="number" id="cfgMinVol" value="10000000">
+        </div>
+        <div>
+          <label>Max pairs</label>
+          <input type="number" id="cfgMaxPairs" value="60">
+        </div>
+      </div>
+
+      <label class="check"><input type="checkbox" id="cfgAuto"> Strong setups (≥5) auto naar Telegram</label>
+      <label class="check"><input type="checkbox" id="cfgExclMeme" checked> Meme &amp; leverage tokens uitsluiten</label>
+    </div>
+    <div class="modal-foot">
+      <button class="kb-btn" id="btnTest">Test Telegram</button>
+      <button class="kb-btn primary" id="btnSave">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===========================================================
+   CC SWING SCANNER — Telegram-themed · 660px fixed
+   =========================================================== */
+const BINANCE = 'https://api.binance.com';
+
+const DEFAULTS = {
+  token:'', chat:'',
+  minVol:10_000_000, maxPairs:60,
+  auto:false, exclMeme:true
+};
+const MEME_RE = /^(DOGE|SHIB|PEPE|FLOKI|BONK|WIF|MEME|TURBO|MOG|POPCAT|BRETT|TRUMP|MOODENG|GOAT|NEIRO|PNUT|FARTCOIN|SPX|ACT|HIPPO)/i;
+const LEV_RE  = /(UP|DOWN|BULL|BEAR)USDT$/i;
+
+const state = {
+  cfg:{...DEFAULTS}, scanning:false, results:[],
+  filter:'all', btcTrend:null
+};
+
+/* ===== Storage ===== */
+function loadCfg(){
+  try{ const raw=localStorage.getItem('ccswing-tg-cfg'); if(raw)state.cfg={...DEFAULTS,...JSON.parse(raw)};}catch(e){}
+}
+function saveCfg(){ localStorage.setItem('ccswing-tg-cfg',JSON.stringify(state.cfg)); }
+
+/* ===== Utils ===== */
+const $ = s=>document.querySelector(s);
+const $$ = s=>document.querySelectorAll(s);
+const fmt = (n,d=4)=>{ if(n==null||isNaN(n))return '—'; if(n>=1000)return n.toFixed(2); if(n>=1)return n.toFixed(3); return n.toPrecision(d); };
+const fmtPct = n=> (n>=0?'+':'')+n.toFixed(2)+'%';
+const sleep = ms=>new Promise(r=>setTimeout(r,ms));
+const nowTime = ()=> new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+
+function toast(msg,type='ok'){
+  const t=$('#toast'); t.textContent=msg; t.className='toast show '+(type==='err'?'err':'');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+/* ===== Binance API ===== */
+async function fetchJSON(url){ const r=await fetch(url); if(!r.ok)throw new Error('HTTP '+r.status); return r.json(); }
+async function fetchTickers(){ return fetchJSON(`${BINANCE}/api/v3/ticker/24hr`); }
+async function fetchKlines(symbol,interval,limit){
+  const d=await fetchJSON(`${BINANCE}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
+  return d.map(k=>({t:k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5]}));
+}
+
+/* ===== Indicators ===== */
+function ema(values,period){
+  if(values.length<period) return [];
+  const k=2/(period+1); const out=new Array(values.length).fill(NaN);
+  let sum=0; for(let i=0;i<period;i++) sum+=values[i];
+  out[period-1]=sum/period;
+  for(let i=period;i<values.length;i++) out[i]=values[i]*k+out[i-1]*(1-k);
+  return out;
+}
+function rsi(closes,period=14){
+  const out=new Array(closes.length).fill(NaN);
+  if(closes.length<period+1) return out;
+  let gains=0,losses=0;
+  for(let i=1;i<=period;i++){ const d=closes[i]-closes[i-1]; if(d>=0)gains+=d; else losses-=d; }
+  let ag=gains/period,al=losses/period;
+  out[period]=al===0?100:100-100/(1+ag/al);
+  for(let i=period+1;i<closes.length;i++){
+    const d=closes[i]-closes[i-1];
+    const g=d>0?d:0,l=d<0?-d:0;
+    ag=(ag*(period-1)+g)/period; al=(al*(period-1)+l)/period;
+    out[i]=al===0?100:100-100/(1+ag/al);
+  }
+  return out;
+}
+function macd(closes,f=12,s=26,sig=9){
+  const eF=ema(closes,f),eS=ema(closes,s);
+  const line=closes.map((_,i)=>(isNaN(eF[i])||isNaN(eS[i]))?NaN:eF[i]-eS[i]);
+  const sigSrc=line.filter(v=>!isNaN(v));
+  const sigArr=ema(sigSrc,sig);
+  const off=line.length-sigArr.length;
+  const aligned=new Array(line.length).fill(NaN);
+  for(let i=0;i<sigArr.length;i++) aligned[i+off]=sigArr[i];
+  const hist=line.map((v,i)=>(isNaN(v)||isNaN(aligned[i]))?NaN:v-aligned[i]);
+  return {line,signal:aligned,hist};
+}
+function findSwingHL(candles,lookback){
+  const s=candles.slice(-lookback);
+  let hi=-Infinity,lo=Infinity,hiI=0,loI=0;
+  s.forEach((c,i)=>{ if(c.h>hi){hi=c.h;hiI=i;} if(c.l<lo){lo=c.l;loI=i;} });
+  return {high:hi,low:lo,highIdx:hiI,lowIdx:loI};
+}
+function fibLevel(h,l,r){ return h-(h-l)*r; }
+function hasHigherHL(candles,n=30){
+  const s=candles.slice(-n); const half=Math.floor(s.length/2);
+  const fH=Math.max(...s.slice(0,half).map(c=>c.h));
+  const lH=Math.max(...s.slice(half).map(c=>c.h));
+  const fL=Math.min(...s.slice(0,half).map(c=>c.l));
+  const lL=Math.min(...s.slice(half).map(c=>c.l));
+  return lH>fH && lL>fL;
+}
+function bullishDiv(closes,ind,n=20){
+  const c=closes.slice(-n),i=ind.slice(-n);
+  let l1=Infinity,l1i=-1,l2=Infinity,l2i=-1;
+  for(let x=0;x<c.length;x++){
+    if(c[x]<l1){l2=l1;l2i=l1i;l1=c[x];l1i=x;}
+    else if(c[x]<l2){l2=c[x];l2i=x;}
+  }
+  if(l1i<0||l2i<0) return false;
+  const [a,b]=l1i<l2i?[l1i,l2i]:[l2i,l1i];
+  return c[b]<c[a] && i[b]>i[a];
+}
+function confirmCandle(candles){
+  const c=candles[candles.length-1]; const range=c.h-c.l; if(range<=0) return false;
+  const body=Math.abs(c.c-c.o); const lower=Math.min(c.o,c.c)-c.l;
+  const green=c.c>c.o;
+  const inUpper=(c.c-c.l)/range>=0.66;
+  const wickDom=lower>=body*1.2;
+  const prevVol=candles.slice(-6,-1).reduce((s,k)=>s+k.v,0)/5;
+  const volOK=c.v>prevVol;
+  return green && inUpper && (wickDom||body/range<0.4) && volOK;
+}
+
+/* ===== BTC trend ===== */
+async function checkBtc(){
+  const k=await fetchKlines('BTCUSDT','1d',250);
+  const closes=k.map(c=>c.c);
+  const e200=ema(closes,200),e50=ema(closes,50);
+  const last=closes[closes.length-1];
+  const bullish = last>e200[e200.length-1] && e50[e50.length-1]>e200[e200.length-1];
+  state.btcTrend={price:last,bullish,ema200:e200[e200.length-1]};
+  return state.btcTrend;
+}
+
+/* ===== Analyse one symbol ===== */
+async function analyze(symbol, t24){
+  try{
+    const dk=await fetchKlines(symbol,'1d',250);
+    if(dk.length<210) return null;
+    const closes=dk.map(c=>c.c);
+    const e200=ema(closes,200),e50=ema(closes,50),e20=ema(closes,20);
+    const last=dk[dk.length-1], lp=last.c;
+
+    const aboveE200=lp>e200[e200.length-1];
+    const e50AboveE200=e50[e50.length-1]>e200[e200.length-1];
+    const hhhl=hasHigherHL(dk,30);
+    if(!(aboveE200 && (e50AboveE200||hhhl))) return null;
+
+    const swing=findSwingHL(dk,30);
+    const f382=fibLevel(swing.high,swing.low,.382);
+    const f500=fibLevel(swing.high,swing.low,.5);
+    const f618=fibLevel(swing.high,swing.low,.618);
+    const fExt=swing.high+(swing.high-swing.low)*.618;
+
+    const tol=.04, dist=v=>Math.abs(lp-v)/lp;
+    const nE50=dist(e50[e50.length-1])<tol;
+    const nE200=dist(e200[e200.length-1])<tol;
+    const n382=dist(f382)<tol, n500=dist(f500)<tol, n618=dist(f618)<tol;
+    const inPb=nE50||nE200||n382||n500||n618;
+    let pbLvl='—';
+    if(nE50) pbLvl='EMA-50';
+    else if(nE200) pbLvl='EMA-200';
+    else if(n618) pbLvl='Fib 61.8%';
+    else if(n500) pbLvl='Fib 50%';
+    else if(n382) pbLvl='Fib 38.2%';
+
+    const fk=await fetchKlines(symbol,'4h',200);
+    const fc=fk.map(c=>c.c);
+    const fr=rsi(fc,14),fm=macd(fc);
+    const rNow=fr[fr.length-1],rPrev=fr[fr.length-2];
+    const rInZone=rNow>=35&&rNow<=45;
+    const rOut=rNow>35&&rNow<60&&rPrev<rNow;
+
+    const hL=fm.hist[fm.hist.length-1],hP=fm.hist[fm.hist.length-2],hP2=fm.hist[fm.hist.length-3];
+    const macdTurn=(hL>hP)&&(hP<=hP2 || (hL>0&&hP<=0));
+    const bd=bullishDiv(fc,fr,24);
+
+    const last30=fk.slice(-30),half=15;
+    const minA=Math.min(...last30.slice(0,half).map(c=>c.l));
+    const minB=Math.min(...last30.slice(half).map(c=>c.l));
+    const hLowOK=minB>minA;
+
+    const dConf=confirmCandle(dk),hConf=confirmCandle(fk);
+    const btcOK=state.btcTrend?.bullish??false;
+
+    const factors=[
+      {k:'trend',label:'Daily >EMA-200',ok:aboveE200&&e50AboveE200},
+      {k:'hhhl', label:'HH & HL 30d',ok:hhhl},
+      {k:'pb',   label:'Pullback '+pbLvl,ok:inPb},
+      {k:'rsi',  label:'RSI 4h zone',ok:rInZone||rOut,mid:rOut&&!rInZone},
+      {k:'macd', label:'MACD draait om',ok:macdTurn},
+      {k:'div',  label:'Bull div 4h',ok:bd},
+      {k:'hl',   label:'Hogere low',ok:hLowOK},
+      {k:'btc',  label:'BTC bullish',ok:btcOK},
+      {k:'conf', label:'Confirm candle',ok:dConf||hConf,mid:hConf&&!dConf},
+    ];
+    const score=factors.filter(f=>f.ok).length;
+
+    const refC=dConf?dk[dk.length-1]:fk[fk.length-1];
+    const entry=refC.c*1.002;
+    const sl=Math.min(refC.l,lp*.97)*.998;
+    const slPct=(sl-entry)/entry*100;
+    const tp1=swing.high, tp1Pct=(tp1-entry)/entry*100;
+    const tp2=fExt, tp2Pct=(tp2-entry)/entry*100;
+    const risk=entry-sl;
+    const rr1=risk>0?(tp1-entry)/risk:0;
+    const rr2=risk>0?(tp2-entry)/risk:0;
+
+    // TP realism check
+    const tpRealistic = tp1Pct>0 && tp1Pct<=25 && tp2Pct<=60;
+    const tpTooFar = tp1Pct>25 || tp2Pct>60;
+
+    return {
+      symbol,price:lp,chg24:t24?parseFloat(t24.priceChangePercent):0,
+      vol24M:t24?parseFloat(t24.quoteVolume)/1e6:0,
+      score,factors,inPullback:inPb,pullbackLevel:pbLvl,
+      rsi4h:rNow,macdTurning:macdTurn,bullDiv:bd,
+      dailyConfirm:dConf,h4Confirm:hConf,btcOK,
+      aboveEma200:aboveE200,higherHL:hhhl,higherLowOK:hLowOK,
+      ema20d:e20[e20.length-1],
+      entry,sl,slPct,tp1,tp1Pct,tp2,tp2Pct,rr1,rr2,
+      tpRealistic, tpTooFar,
+      time:nowTime()
+    };
+  }catch(e){ return null; }
+}
+
+/* ===========================================================
+   FEED RENDERING — Telegram chat style
+   =========================================================== */
+function clearProgress(){
+  const p=$('#progressMsg'); if(p) p.remove();
+}
+function pushProgress(label,pct){
+  let p=$('#progressMsg');
+  if(!p){
+    p=document.createElement('div');
+    p.id='progressMsg';
+    p.className='progress-msg';
+    p.innerHTML='<div class="title">🔍 Scan in progress</div><div class="label"></div><div class="bar-track"><div class="bar-fill"></div></div>';
+    $('#feed').appendChild(p);
+  }
+  p.querySelector('.label').textContent=label;
+  p.querySelector('.bar-fill').style.width=pct+'%';
+  scrollFeed();
+}
+function pushNotice(text){
+  const n=document.createElement('div'); n.className='notice';
+  n.innerHTML=`<span>${text}</span>`;
+  $('#feed').appendChild(n);
+  scrollFeed();
+}
+
+function setupBubble(r){
+  let scoreClass='s-low';
+  if(r.score>=5 && r.tpRealistic) scoreClass='s-strong';
+  else if(r.score>=3 || (r.score>=5 && !r.tpRealistic)) scoreClass='s-mid';
+
+  const scoreLabel = (r.score>=5 && r.tpRealistic)?'⭐ Strong setup':(r.score>=5?'⚠ Strong score, TP te ver':(r.score>=3?'👀 Watching':'⚠ Zwak'));
+  const sym = r.symbol.replace('USDT','');
+
+  const checks = r.factors.map(f=>{
+    const cls = f.ok?(f.mid?'mid':'ok'):'no';
+    const icon = f.ok?(f.mid?'~':'✓'):'·';
+    return `<span class="chk ${cls}">${icon} ${f.label}</span>`;
+  }).join('');
+
+  const tpWarnBanner = r.tpTooFar ? `
+    <div class="tp-warn-banner">
+      <div class="warn-head">⚠ TP-targets te ver weg</div>
+      <div class="warn-body">Swing-high zit ${r.tp1Pct.toFixed(0)}% boven entry — een oude piek, geen haalbaar zwaaipunt. Niet handelen als swing.</div>
+    </div>
+  ` : '';
+
+  const div=document.createElement('div'); div.className='msg';
+  div.innerHTML=`
+    <div class="msg-avatar"></div>
+    <div class="bubble">
+      <div class="msg-author">CC Swing Scanner</div>
+      <div class="setup-head">
+        <div class="setup-sym">${sym}<span class="quote">/ USDT</span>${r.tpTooFar?' <span class="tp-warn">⚠</span>':''}</div>
+        <div class="setup-meta">
+          <span class="price">${fmt(r.price)}</span>
+          <span class="chg ${r.chg24>=0?'up':'dn'}">${fmtPct(r.chg24)} 24h</span>
+        </div>
+      </div>
+      <span class="score-badge ${scoreClass}">${scoreLabel} · ${r.score}/9</span>
+
+      <div class="setup-line"><span class="lbl">Trend</span><span class="v ${r.aboveEma200?'up':''}">${r.aboveEma200?'✓ >EMA-200':'—'} ${r.higherHL?'· HH/HL':''}</span></div>
+      <div class="setup-line"><span class="lbl">Pullback</span><span class="v ${r.inPullback?'warn':''}">${r.inPullback?r.pullbackLevel:'geen'}</span></div>
+      <div class="setup-line"><span class="lbl">RSI 4h</span><span class="v">${r.rsi4h.toFixed(1)}</span></div>
+      <div class="setup-line"><span class="lbl">Vol 24h</span><span class="v">${r.vol24M.toFixed(1)}M USDT</span></div>
+
+      <div class="checks">${checks}</div>
+
+      ${tpWarnBanner}
+
+      <div class="plan-block">
+        <div class="plan-row"><span class="lbl">Entry</span><span class="v">${fmt(r.entry)}</span></div>
+        <div class="plan-row"><span class="lbl">Stop-loss</span><span class="v dn">${fmt(r.sl)} (${r.slPct.toFixed(1)}%)</span></div>
+        <div class="plan-row"><span class="lbl">TP1 / swing-high</span><span class="v ${r.tpTooFar?'warn':'up'}">${fmt(r.tp1)} (+${r.tp1Pct.toFixed(1)}%)</span></div>
+        <div class="plan-row"><span class="lbl">TP2 / fib 1.618</span><span class="v ${r.tpTooFar?'warn':'up'}">${fmt(r.tp2)} (+${r.tp2Pct.toFixed(1)}%)</span></div>
+        <div class="plan-row"><span class="lbl">R/R TP1 / TP2</span><span class="v">${r.rr1.toFixed(1)}:1 → ${r.rr2.toFixed(1)}:1</span></div>
+        <div class="plan-row"><span class="lbl">Trailing onder</span><span class="v">Daily 20-EMA · ${fmt(r.ema20d)}</span></div>
+        <div class="plan-row"><span class="lbl">Sizing</span><span class="v">${r.score>=5 && r.tpRealistic?'3-4% in 2-3 entries':(r.tpTooFar?'niet handelen':'max 2%')}</span></div>
+      </div>
+
+      <div class="bubble-actions">
+        <button class="bubble-btn" data-act="tv" data-sym="${r.symbol}">📊 TradingView</button>
+        <button class="bubble-btn ${r.tpTooFar?'disabled':''}" data-act="tg" data-sym="${r.symbol}" ${r.tpTooFar?'disabled':''}>${r.tpTooFar?'⚠ Telegram geblokkeerd':'✈ Stuur naar Telegram'}</button>
+      </div>
+      <div class="bubble-time">${r.time}</div>
+    </div>
+  `;
+  return div;
+}
+
+function renderFeed(){
+  // remove old setup msgs (keep welcome msg + notices + progress)
+  $$('.msg.setup').forEach(el=>el.remove());
+  const list = filteredResults();
+  list.forEach(r=>{
+    const b=setupBubble(r);
+    b.classList.add('setup');
+    b.dataset.sym=r.symbol;
+    $('#feed').appendChild(b);
+  });
+  // re-add progress at bottom if scanning
+  if(state.scanning){ const p=$('#progressMsg'); if(p) $('#feed').appendChild(p); }
+  // bind actions
+  $$('.bubble-btn').forEach(b=>{
+    b.onclick=()=>{
+      if(b.disabled) return;
+      const act=b.dataset.act, sym=b.dataset.sym;
+      const r=state.results.find(x=>x.symbol===sym); if(!r) return;
+      if(act==='tv') window.open(`https://www.tradingview.com/chart/?symbol=BINANCE:${sym}`,'_blank');
+      if(act==='tg'){
+        if(r.tpTooFar){ toast('TP-targets te ver — niet bruikbaar als swing','err'); return; }
+        sendSetupToTelegram(r);
+      }
+    };
+  });
+}
+
+function filteredResults(){
+  const f=state.filter;
+  if(f==='strong') return state.results.filter(r=>r.score>=5 && r.tpRealistic);
+  if(f==='watching') return state.results.filter(r=>(r.score>=3 && r.score<5) || (r.score>=5 && !r.tpRealistic));
+  if(f==='setup') return state.results.filter(r=>r.inPullback);
+  return state.results;
+}
+
+function updateCounts(){
+  $('#cAll').textContent=state.results.length;
+  $('#cStrong').textContent=state.results.filter(r=>r.score>=5 && r.tpRealistic).length;
+  $('#cWatch').textContent=state.results.filter(r=>(r.score>=3&&r.score<5) || (r.score>=5 && !r.tpRealistic)).length;
+  $('#cSetup').textContent=state.results.filter(r=>r.inPullback).length;
+  $('#sbScanned').textContent=state.results.length;
+}
+
+function scrollFeed(){
+  const f=$('#feed'); f.scrollTop=f.scrollHeight;
+}
+
+/* ===========================================================
+   SCAN
+   =========================================================== */
+async function runScan(){
+  if(state.scanning) return;
+  state.scanning=true; state.results=[];
+  $('#kbScan').disabled=true; $('#kbScan').textContent='🔄 Scannen...';
+  $('#headStatus').textContent='bot · scanning...';
+  $$('.msg.setup').forEach(el=>el.remove());
+  pushNotice('Scan gestart · ' + nowTime());
+
+  try{
+    pushProgress('BTC-trend bepalen...',2);
+    await checkBtc();
+    const btcEl=$('#sbBtc');
+    btcEl.textContent=state.btcTrend.bullish?'bullish':'bearish';
+    btcEl.className='v '+(state.btcTrend.bullish?'up':'dn');
+
+    pushProgress('Tickers ophalen...',5);
+    const tk=await fetchTickers();
+    const cands=tk
+      .filter(t=>t.symbol.endsWith('USDT'))
+      .filter(t=>!LEV_RE.test(t.symbol))
+      .filter(t=>{
+        if(!state.cfg.exclMeme) return true;
+        const b=t.symbol.replace(/USDT$/,'');
+        return !MEME_RE.test(b);
+      })
+      .filter(t=>parseFloat(t.quoteVolume)>=state.cfg.minVol)
+      .sort((a,b)=>parseFloat(b.quoteVolume)-parseFloat(a.quoteVolume))
+      .slice(0,state.cfg.maxPairs);
+
+    let done=0;
+    for(const t of cands){
+      done++;
+      const pct=Math.round(5+done/cands.length*92);
+      pushProgress(`${done}/${cands.length} · ${t.symbol.replace('USDT','')}`,pct);
+      const r=await analyze(t.symbol,t);
+      if(r){
+        state.results.push(r);
+        state.results.sort((a,b)=>b.score-a.score||b.vol24M-a.vol24M);
+        renderFeed(); updateCounts();
+      }
+      await sleep(60);
+    }
+
+    clearProgress();
+    pushNotice(`Scan voltooid · ${state.results.length} setups · ${nowTime()}`);
+    $('#sbTime').textContent=nowTime();
+    $('#headStatus').textContent='bot · binance · long-only';
+    $('#headStatus').className='head-status online';
+
+    if(state.cfg.auto && state.cfg.token && state.cfg.chat){
+      const strong=state.results.filter(r=>r.score>=5 && r.tpRealistic);
+      for(const r of strong) await sendSetupToTelegram(r,true);
+      if(strong.length) pushNotice(`📨 ${strong.length} strong setups verstuurd naar Telegram`);
+    }
+
+  }catch(e){
+    clearProgress();
+    pushNotice('❌ Fout: '+e.message);
+    toast('Fout: '+e.message,'err');
+  }finally{
+    state.scanning=false;
+    $('#kbScan').disabled=false; $('#kbScan').textContent='🔍 Scan opnieuw';
+    scrollFeed();
+  }
+}
+
+/* ===========================================================
+   TELEGRAM
+   =========================================================== */
+async function sendTelegram(text){
+  if(!state.cfg.token||!state.cfg.chat){ toast('Configureer Telegram in instellingen','err'); return false; }
+  const r=await fetch(`https://api.telegram.org/bot${state.cfg.token}/sendMessage`,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({chat_id:state.cfg.chat,text,parse_mode:'Markdown',disable_web_page_preview:true})
+  });
+  const j=await r.json();
+  if(!j.ok){ toast('Telegram: '+(j.description||'fout'),'err'); return false; }
+  return true;
+}
+async function sendSetupToTelegram(r,silent=false){
+  const txt=
+`🎯 *SWING LONG · ${r.symbol}*  _score ${r.score}/9_
+
+*Trend*: ${r.aboveEma200?'✓':'✗'} >EMA-200 · ${r.higherHL?'✓':'✗'} HH/HL
+*Pullback*: ${r.inPullback?r.pullbackLevel:'geen'}
+*RSI 4h*: ${r.rsi4h.toFixed(1)} · *MACD*: ${r.macdTurning?'draait om':'—'}
+*Div*: ${r.bullDiv?'bullish':'—'} · *BTC*: ${r.btcOK?'bullish':'bearish'}
+*Confirm*: ${r.dailyConfirm?'1d':(r.h4Confirm?'4h':'—')}
+
+*Plan*
+Entry: \`${fmt(r.entry)}\`
+SL: \`${fmt(r.sl)}\` (${r.slPct.toFixed(1)}%)
+TP1: \`${fmt(r.tp1)}\` (+${r.tp1Pct.toFixed(1)}%) — 50% out
+TP2: \`${fmt(r.tp2)}\` (+${r.tp2Pct.toFixed(1)}%)
+R/R: ${r.rr1.toFixed(1)}:1 → ${r.rr2.toFixed(1)}:1
+
+Sizing: ${r.score>=5?'3-4% in 2-3 entries':'max 2%'}
+[TradingView](https://www.tradingview.com/chart/?symbol=BINANCE:${r.symbol})`;
+  const ok=await sendTelegram(txt);
+  if(ok && !silent) toast(r.symbol+' → Telegram');
+}
+
+/* ===========================================================
+   MODAL
+   =========================================================== */
+function openModal(){
+  $('#cfgToken').value=state.cfg.token;
+  $('#cfgChat').value=state.cfg.chat;
+  $('#cfgMinVol').value=state.cfg.minVol;
+  $('#cfgMaxPairs').value=state.cfg.maxPairs;
+  $('#cfgAuto').checked=state.cfg.auto;
+  $('#cfgExclMeme').checked=state.cfg.exclMeme;
+  $('#modal').classList.add('show');
+}
+function closeModal(){ $('#modal').classList.remove('show'); }
+function saveModal(){
+  state.cfg.token=$('#cfgToken').value.trim();
+  state.cfg.chat=$('#cfgChat').value.trim();
+  state.cfg.minVol=parseInt($('#cfgMinVol').value)||DEFAULTS.minVol;
+  state.cfg.maxPairs=parseInt($('#cfgMaxPairs').value)||DEFAULTS.maxPairs;
+  state.cfg.auto=$('#cfgAuto').checked;
+  state.cfg.exclMeme=$('#cfgExclMeme').checked;
+  saveCfg(); closeModal(); toast('Opgeslagen');
+}
+async function testTelegram(){
+  state.cfg.token=$('#cfgToken').value.trim();
+  state.cfg.chat=$('#cfgChat').value.trim();
+  const ok=await sendTelegram('✅ CC Swing Scanner — verbinding werkt');
+  if(ok) toast('Telegram test gelukt');
+}
+
+/* ===========================================================
+   WIRING
+   =========================================================== */
+loadCfg();
+$('#welcomeTime').textContent = nowTime();
+$('#feedDate').textContent = new Date().toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long'});
+
+$('#kbScan').onclick=runScan;
+$('#kbStrong').onclick=()=>{
+  state.filter='strong';
+  $$('.filter').forEach(f=>f.classList.toggle('active',f.dataset.f==='strong'));
+  renderFeed();
+};
+$('#kbClear').onclick=()=>{
+  state.results=[]; renderFeed(); updateCounts();
+  $$('.msg.setup').forEach(el=>el.remove());
+  $$('.notice').forEach((el,i)=>{ if(i>0) el.remove(); });
+  pushNotice('Feed gewist');
+};
+$('#btnSettings').onclick=openModal;
+$('#btnInfo').onclick=()=>{
+  const d=document.querySelector('details.strat-info'); if(d) d.open=!d.open;
+  $('#feed').scrollTop=0;
+};
+$('#modalClose').onclick=closeModal;
+$('#btnSave').onclick=saveModal;
+$('#btnTest').onclick=testTelegram;
+$('#modal').onclick=(e)=>{ if(e.target.id==='modal') closeModal(); };
+
+$$('.filter').forEach(p=>{
+  p.onclick=()=>{
+    $$('.filter').forEach(x=>x.classList.remove('active'));
+    p.classList.add('active');
+    state.filter=p.dataset.f;
+    renderFeed();
+  };
+});
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') closeModal();
+  if(e.key==='s' && !state.scanning && e.target.tagName!=='INPUT') runScan();
+});
+</script>
+</body>
+</html>

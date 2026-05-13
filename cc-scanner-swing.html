@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>CC Swing Scanner — Desktop</title>
+<meta name="viewport" content="width=660">
+<style>
+:root{
+  --tg-bg:#0E1621;
+  --tg-chat:#17212B;
+  --tg-bubble-in:#182533;
+  --tg-bubble-out:#2B5278;
+  --tg-accent:#2AABEE;
+  --tg-accent-2:#229ED9;
+  --tg-text:#FFFFFF;
+  --tg-text-2:#E1E1E1;
+  --tg-muted:#708499;
+  --tg-divider:#1B2734;
+  --tg-hover:#202B36;
+  --tg-green:#4FAE4E;
+  --tg-red:#E53935;
+  --tg-warn:#F5A623;
+  --tg-link:#7BC3FF;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{background:#000;min-height:100vh}
+body{
+  background:#000;
+  color:var(--tg-text);
+  font-family:var(--font);
+  font-size:13px;line-height:1.4;
+  -webkit-font-smoothing:antialiased;
+  display:flex;justify-content:center;
+  padding:24px 0;
+}
+
+/* === 660px Telegram window === */
+.window{
+  width:660px;
+  min-height:calc(100vh - 48px);
+  background:var(--tg-bg);
+  border-radius:10px;
+  overflow:hidden;
+  display:flex;flex-direction:column;
+  box-shadow:0 8px 40px rgba(0,0,0,.6);
+}
+
+/* === Top header === */
+.head{
+  background:var(--tg-chat);
+  padding:11px 16px;
+  display:flex;align-items:center;gap:12px;
+  border-bottom:1px solid var(--tg-divider);
+  flex-shrink:0;
+}
+.avatar{
+  width:42px;height:42px;border-radius:50%;
+  background:linear-gradient(135deg,#2AABEE 0%,#229ED9 100%);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:600;font-size:15px;color:#fff;letter-spacing:.4px;
+}
+.head-info{flex:1;min-width:0}
+.head-name{font-weight:500;font-size:15px;letter-spacing:.1px;display:flex;align-items:center;gap:6px}
+.head-name .ver{font-size:10px;background:rgba(42,171,238,.18);color:var(--tg-accent);padding:2px 7px;border-radius:8px;font-weight:600;letter-spacing:.4px}
+.head-status{font-size:12.5px;color:var(--tg-muted)}
+.head-status.online{color:var(--tg-accent)}
+.head-actions{display:flex;gap:2px}
+.icon-btn{
+  background:none;border:none;color:var(--tg-muted);
+  width:34px;height:34px;border-radius:50%;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:17px;transition:background .15s;font-family:var(--font);
+}
+.icon-btn:hover{background:var(--tg-hover);color:var(--tg-text)}
+
+/* === Stats bar === */
+.statbar{
+  background:var(--tg-chat);
+  padding:11px 16px;
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:10px;
+  border-bottom:1px solid var(--tg-divider);
+  flex-shrink:0;
+}
+.stat{
+  background:var(--tg-bubble-in);
+  padding:8px 11px;
+  border-radius:7px;
+  text-align:left;
+}
+.stat .lbl{
+  font-size:10px;color:var(--tg-muted);
+  letter-spacing:.4px;text-transform:uppercase;
+  margin-bottom:2px;font-weight:500;
+}
+.stat .v{
+  font-size:14px;font-weight:600;color:var(--tg-text);
+  font-variant-numeric:tabular-nums;
+}
+.stat .v.up{color:var(--tg-green)}
+.stat .v.dn{color:var(--tg-red)}
+.stat .v.acc{color:var(--tg-accent)}
+
+/* === Filter pills + progress === */
+.toolbar{
+  background:var(--tg-chat);
+  padding:9px 16px 11px;
+  border-bottom:1px solid var(--tg-divider);
+  display:flex;gap:6px;align-items:center;flex-wrap:wrap;
+  flex-shrink:0;
+}
+.filter{
+  font-size:12px;font-weight:500;
+  padding:6px 12px;border-radius:14px;
+  background:var(--tg-bubble-in);
+  color:var(--tg-text-2);
+  cursor:pointer;border:none;
+  white-space:nowrap;
+  transition:background .15s;
+  font-family:var(--font);
+}
+.filter:hover{background:var(--tg-hover)}
+.filter.active{background:var(--tg-accent);color:#fff}
+.filter .count{
+  display:inline-block;margin-left:4px;
+  background:rgba(255,255,255,.18);
+  padding:1px 6px;border-radius:8px;font-size:11px;
+}
+.toolbar .spacer{flex:1}
+.sort-select{
+  background:var(--tg-bubble-in);
+  color:var(--tg-text-2);border:none;
+  padding:6px 10px;border-radius:14px;
+  font-size:12px;font-family:var(--font);
+  cursor:pointer;
+}
+.sort-select:focus{outline:none}
+
+/* progress bar slim */
+.progress{
+  background:var(--tg-chat);
+  padding:0 16px 10px;
+  border-bottom:1px solid var(--tg-divider);
+  display:none;
+  flex-shrink:0;
+}
+.progress.show{display:block}
+.progress .label{font-size:11px;color:var(--tg-accent);margin-bottom:5px;font-variant-numeric:tabular-nums;display:flex;justify-content:space-between}
+.progress .bar-track{height:3px;background:var(--tg-bubble-in);border-radius:2px;overflow:hidden}
+.progress .bar-fill{height:100%;background:var(--tg-accent);width:0%;transition:width .25s}
+
+/* === Table area === */
+.table-wrap{
+  flex:1;
+  background:var(--tg-bg);
+  overflow-y:auto;
+  padding:0;
+}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl thead th{
+  position:sticky;top:0;z-index:5;
+  background:var(--tg-chat);
+  font-size:10px;font-weight:600;
+  color:var(--tg-muted);
+  letter-spacing:.5px;text-transform:uppercase;
+  padding:9px 8px;text-align:left;
+  border-bottom:1px solid var(--tg-divider);
+}
+.tbl thead th.num{text-align:right}
+.tbl thead th.ctr{text-align:center}
+.tbl tbody td{
+  padding:10px 8px;
+  border-bottom:1px solid var(--tg-divider);
+  vertical-align:middle;
+  font-variant-numeric:tabular-nums;
+}
+.tbl tbody td.num{text-align:right}
+.tbl tbody td.ctr{text-align:center}
+.tbl tbody tr.row{cursor:pointer;transition:background .12s}
+.tbl tbody tr.row:hover{background:var(--tg-hover)}
+.tbl tbody tr.row.open{background:var(--tg-bubble-in)}
+.tbl tbody tr.row.open td:first-child{box-shadow:inset 3px 0 0 var(--tg-accent)}
+
+.sym{font-weight:600;color:var(--tg-text);font-size:13px}
+.sym .quote{color:var(--tg-muted);font-weight:400;font-size:11px}
+.up{color:var(--tg-green)}
+.dn{color:var(--tg-red)}
+.muted{color:var(--tg-muted)}
+
+.badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:36px;padding:3px 8px;
+  border-radius:10px;font-size:11px;font-weight:600;
+  font-variant-numeric:tabular-nums;
+}
+.badge.s-strong{background:rgba(79,174,78,.18);color:#7BD37B}
+.badge.s-mid{background:rgba(245,166,35,.18);color:var(--tg-warn)}
+.badge.s-low{background:rgba(229,57,53,.15);color:#E07A77}
+
+.dots{display:inline-flex;gap:3px;align-items:center}
+.dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.10)}
+.dot.on{background:var(--tg-green)}
+.dot.mid{background:var(--tg-warn)}
+
+.pb{
+  display:inline-block;
+  background:rgba(42,171,238,.12);color:var(--tg-accent);
+  padding:2px 7px;border-radius:8px;font-size:10.5px;font-weight:500;
+}
+.pb.none{background:transparent;color:var(--tg-muted)}
+
+/* expanded detail row */
+.tbl tbody tr.detail{display:none;background:var(--tg-bubble-in)}
+.tbl tbody tr.detail.open{display:table-row}
+.tbl tbody tr.detail td{padding:0;border-bottom:1px solid var(--tg-divider)}
+.detail-content{padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+.detail-section{
+  background:var(--tg-bg);
+  border-radius:8px;
+  padding:11px 13px;
+}
+.detail-section h4{
+  font-size:10px;color:var(--tg-muted);
+  letter-spacing:.5px;text-transform:uppercase;font-weight:600;
+  margin-bottom:8px;
+}
+.confluence{display:flex;flex-direction:column;gap:5px}
+.conf-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tg-text-2)}
+.conf-item .ico{
+  width:14px;height:14px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:700;flex-shrink:0;
+}
+.conf-item .ico.ok{background:var(--tg-green);color:#fff}
+.conf-item .ico.mid{background:var(--tg-warn);color:#000}
+.conf-item .ico.no{background:rgba(229,57,53,.25);color:#E07A77}
+.conf-item.no{color:var(--tg-muted)}
+
+.plan-row{
+  display:flex;justify-content:space-between;
+  font-size:12px;padding:4px 0;
+  border-bottom:1px dotted rgba(255,255,255,.05);
+}
+.plan-row:last-child{border:none}
+.plan-row .lbl{color:var(--tg-muted)}
+.plan-row .v{color:var(--tg-text);font-weight:500;font-variant-numeric:tabular-nums}
+.plan-row .v.up{color:var(--tg-green)}
+.plan-row .v.dn{color:var(--tg-red)}
+.plan-row .v.warn{color:var(--tg-warn);text-decoration:line-through;text-decoration-color:rgba(245,166,35,.5)}
+
+.tp-warn{
+  display:inline-block;
+  background:rgba(245,166,35,.18);color:var(--tg-warn);
+  font-size:11px;padding:1px 6px;border-radius:6px;
+  margin-left:5px;cursor:help;font-weight:600;
+}
+.tp-warn-banner{
+  background:rgba(245,166,35,.10);
+  border:1px solid rgba(245,166,35,.3);
+  border-radius:7px;
+  padding:10px 12px;margin-bottom:10px;
+}
+.tp-warn-banner .warn-head{
+  color:var(--tg-warn);font-weight:600;font-size:12px;
+  margin-bottom:4px;
+}
+.tp-warn-banner .warn-body{
+  color:var(--tg-text-2);font-size:12px;line-height:1.5;
+}
+
+.detail-actions{
+  grid-column:1/3;
+  display:flex;gap:8px;margin-top:2px;
+}
+.act-btn{
+  flex:1;
+  background:var(--tg-bubble-in);
+  color:var(--tg-link);
+  border:none;padding:9px 12px;
+  border-radius:8px;font-size:13px;font-weight:500;
+  cursor:pointer;font-family:var(--font);
+  transition:background .15s;
+}
+.act-btn:hover{background:var(--tg-hover)}
+.act-btn.primary{background:var(--tg-accent);color:#fff}
+.act-btn.primary:hover{background:var(--tg-accent-2)}
+
+/* empty state */
+.empty{
+  padding:60px 20px;text-align:center;color:var(--tg-muted);
+}
+.empty .emoji{font-size:42px;margin-bottom:12px;opacity:.6}
+.empty .title{font-size:15px;color:var(--tg-text-2);margin-bottom:6px;font-weight:500}
+.empty .sub{font-size:12.5px;line-height:1.5;max-width:380px;margin:0 auto}
+
+/* bottom keyboard */
+.keyboard{
+  background:var(--tg-chat);
+  border-top:1px solid var(--tg-divider);
+  padding:10px 12px;
+  display:grid;
+  grid-template-columns:2fr 1fr 1fr;
+  gap:6px;flex-shrink:0;
+}
+.kb-btn{
+  background:var(--tg-bubble-in);
+  color:var(--tg-text-2);
+  border:none;
+  padding:11px 8px;
+  font-size:13px;font-weight:500;
+  border-radius:8px;cursor:pointer;font-family:var(--font);
+  transition:background .15s;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.kb-btn:hover{background:var(--tg-hover)}
+.kb-btn.primary{background:var(--tg-accent);color:#fff}
+.kb-btn.primary:hover{background:var(--tg-accent-2)}
+.kb-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* modal */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);
+  display:none;align-items:center;justify-content:center;
+  z-index:100;backdrop-filter:blur(4px);
+}
+.modal-bg.show{display:flex}
+.modal{
+  background:var(--tg-chat);
+  border-radius:10px;
+  width:520px;max-width:92vw;
+  max-height:88vh;overflow-y:auto;padding:0;
+}
+.modal-head{padding:16px 20px;border-bottom:1px solid var(--tg-divider);display:flex;justify-content:space-between;align-items:center}
+.modal-head h3{font-size:16px;font-weight:600}
+.modal-body{padding:18px 20px}
+.modal-body label{display:block;font-size:12px;font-weight:500;color:var(--tg-accent);margin-bottom:6px;margin-top:14px}
+.modal-body input{
+  width:100%;background:var(--tg-bg);
+  border:1px solid var(--tg-divider);color:var(--tg-text);
+  padding:9px 12px;border-radius:8px;font-size:14px;font-family:var(--font);
+}
+.modal-body input:focus{outline:none;border-color:var(--tg-accent)}
+.modal-body .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-body .help{font-size:11px;color:var(--tg-muted);margin-top:5px;line-height:1.5}
+.modal-body .help a{color:var(--tg-link);text-decoration:none}
+.modal-body .check{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--tg-text-2);margin-top:16px;cursor:pointer}
+.modal-body .check input{width:auto}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--tg-divider);display:flex;justify-content:flex-end;gap:8px}
+
+.toast{
+  position:fixed;bottom:30px;left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:var(--tg-bubble-out);color:#fff;
+  padding:10px 18px;border-radius:20px;
+  font-size:13px;opacity:0;
+  transition:all .25s;z-index:200;pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--tg-red)}
+
+/* strategy modal content */
+details.strat-info{
+  background:rgba(36,47,61,.4);
+  border-radius:8px;font-size:12.5px;
+  margin:10px 0;
+}
+details.strat-info summary{
+  padding:10px 14px;cursor:pointer;font-weight:500;
+  color:var(--tg-accent);list-style:none;
+  display:flex;justify-content:space-between;
+}
+details.strat-info summary::after{content:'›';transform:rotate(90deg);transition:transform .2s}
+details.strat-info[open] summary::after{transform:rotate(-90deg)}
+details.strat-info .info-body{padding:0 14px 12px;color:var(--tg-text-2);line-height:1.65}
+details.strat-info ol{padding-left:18px;margin-top:6px}
+details.strat-info li{margin-bottom:5px}
+details.strat-info strong{color:var(--tg-text)}
+
+.table-wrap::-webkit-scrollbar{width:6px}
+.table-wrap::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+.table-wrap::-webkit-scrollbar-track{background:transparent}
+</style>
+</head>
+<body>
+
+<div class="window">
+
+  <!-- Header -->
+  <div class="head">
+    <div class="avatar">CC</div>
+    <div class="head-info">
+      <div class="head-name">CC Swing Scanner <span class="ver">DESKTOP</span></div>
+      <div class="head-status online" id="headStatus">binance · usdt · long-only</div>
+    </div>
+    <div class="head-actions">
+      <button class="icon-btn" id="btnInfo" title="Strategie">ℹ</button>
+      <button class="icon-btn" id="btnSettings" title="Instellingen">⚙</button>
+    </div>
+  </div>
+
+  <!-- Stats bar -->
+  <div class="statbar">
+    <div class="stat"><div class="lbl">BTC trend</div><div class="v" id="sBtc">—</div></div>
+    <div class="stat"><div class="lbl">Gescand</div><div class="v" id="sScanned">0</div></div>
+    <div class="stat"><div class="lbl">Strong</div><div class="v acc" id="sStrong">0</div></div>
+    <div class="stat"><div class="lbl">Watching</div><div class="v" id="sWatching">0</div></div>
+    <div class="stat"><div class="lbl">Laatste</div><div class="v" id="sTime">—</div></div>
+  </div>
+
+  <!-- Toolbar: filters + sort -->
+  <div class="toolbar">
+    <button class="filter active" data-f="all">Alles <span class="count" id="cAll">0</span></button>
+    <button class="filter" data-f="strong">⭐ Strong <span class="count" id="cStrong">0</span></button>
+    <button class="filter" data-f="watching">👀 Watching <span class="count" id="cWatch">0</span></button>
+    <button class="filter" data-f="setup">📍 Pullback <span class="count" id="cSetup">0</span></button>
+    <div class="spacer"></div>
+    <select class="sort-select" id="sortSel">
+      <option value="score">Sort: Score</option>
+      <option value="volume">Sort: Volume</option>
+      <option value="rr">Sort: R/R</option>
+      <option value="chg">Sort: 24h %</option>
+    </select>
+  </div>
+
+  <!-- Progress (slim) -->
+  <div class="progress" id="prog">
+    <div class="label"><span id="progLbl">—</span><span id="progPct">0%</span></div>
+    <div class="bar-track"><div class="bar-fill" id="progFill"></div></div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap" id="tableWrap">
+    <table class="tbl" id="tbl">
+      <thead>
+        <tr>
+          <th>Symbool</th>
+          <th class="num">Prijs</th>
+          <th class="num">24h</th>
+          <th class="num">Vol</th>
+          <th>Pullback</th>
+          <th class="ctr">Conf</th>
+          <th class="num">Score</th>
+          <th class="num">R/R</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="8" style="padding:0">
+          <div class="empty" id="empty">
+            <div class="emoji">📡</div>
+            <div class="title">Nog geen scan uitgevoerd</div>
+            <div class="sub">Klik op <b>Scan starten</b> om de Binance USDT-markt af te tasten op long swing setups volgens de 6-stappen strategie.</div>
+          </div>
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Bottom keyboard -->
+  <div class="keyboard">
+    <button class="kb-btn primary" id="kbScan">🔍 Scan starten</button>
+    <button class="kb-btn" id="kbExport">📋 Export</button>
+    <button class="kb-btn" id="kbClear">🗑 Wissen</button>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>⚙ Instellingen</h3>
+      <button class="icon-btn" id="modalClose">×</button>
+    </div>
+    <div class="modal-body">
+      <label>Telegram bot token</label>
+      <input type="password" id="cfgToken" placeholder="123456789:AAH...">
+      <div class="help">Bot maken: <a href="https://t.me/BotFather" target="_blank">@BotFather</a></div>
+
+      <label>Telegram chat ID</label>
+      <input type="text" id="cfgChat" placeholder="123456789">
+      <div class="help">Eigen chat-id: <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a></div>
+
+      <div class="row">
+        <div>
+          <label>Min 24h volume (USDT)</label>
+          <input type="number" id="cfgMinVol" value="10000000">
+        </div>
+        <div>
+          <label>Max pairs</label>
+          <input type="number" id="cfgMaxPairs" value="80">
+        </div>
+      </div>
+
+      <label class="check"><input type="checkbox" id="cfgAuto"> Strong setups (≥5) auto naar Telegram</label>
+      <label class="check"><input type="checkbox" id="cfgExclMeme" checked> Meme &amp; leverage tokens uitsluiten</label>
+    </div>
+    <div class="modal-foot">
+      <button class="kb-btn" id="btnTest">Test Telegram</button>
+      <button class="kb-btn primary" id="btnSave">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Strategy modal -->
+<div class="modal-bg" id="infoModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>📖 Swing-strategie</h3>
+      <button class="icon-btn" id="infoClose">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--tg-text-2);font-size:13px;line-height:1.6">
+        Long-only swing trades op volwassen, hoog-volume USDT pairs. Geen meme-coins of micro-caps.
+      </p>
+      <details class="strat-info" open style="margin-top:14px">
+        <summary>De 6 stappen</summary>
+        <div class="info-body">
+          <ol>
+            <li><strong>Trend (1d/1w):</strong> prijs &gt; EMA-200, hogere highs &amp; lows op 30d.</li>
+            <li><strong>Pullback (4h/1d):</strong> naar EMA-50, EMA-200, of fib 38.2/50/61.8 van laatste swing. RSI 4h tussen 35-45.</li>
+            <li><strong>Confirm-candle:</strong> groen, lange wick onder, slot bovenste 1/3, volume &gt; correctie.</li>
+            <li><strong>Confluence ≥ 3:</strong> MACD draait om · RSI uit oversold · Bullish divergence · Hogere low · BTC bullish · Geen bad news.</li>
+            <li><strong>Plan:</strong> entry net boven confirm-close · SL onder wick (-3 tot -5%) · TP1 = swing-high (+5-10%, 50% out) · TP2 = fib 1.618 (+15-25%) · Trail onder daily 20-EMA.</li>
+            <li><strong>Sizing:</strong> max 5%/trade. Sterk signaal: 3-4% in 2-3 entries. Nooit alles tegelijk.</li>
+          </ol>
+          <p style="margin-top:10px">R/R 1:3 tot 1:5 · Win-rate 40-50%. Eén winst dekt drie verliezen.</p>
+        </div>
+      </details>
+      <details class="strat-info">
+        <summary>Goede coins voor swing</summary>
+        <div class="info-body">
+          <p><strong>Basis:</strong> BTC, ETH</p>
+          <p><strong>Top alts:</strong> SOL, BNB, ADA</p>
+          <p><strong>DeFi blue chips:</strong> LINK, AAVE, UNI</p>
+          <p><strong>Niche-leiders:</strong> RNDR/FET (AI), ATOM (Cosmos)</p>
+          <p style="margin-top:8px;color:var(--tg-muted)">Vermijd: meme-coins, micro-caps, alles wat in 24h &gt;20% beweegt.</p>
+        </div>
+      </details>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===========================================================
+   CC SWING SCANNER — Telegram theme DESKTOP · 660px
+   =========================================================== */
+const BINANCE='https://api.binance.com';
+const DEFAULTS={token:'',chat:'',minVol:10_000_000,maxPairs:80,auto:false,exclMeme:true};
+const MEME_RE=/^(DOGE|SHIB|PEPE|FLOKI|BONK|WIF|MEME|TURBO|MOG|POPCAT|BRETT|TRUMP|MOODENG|GOAT|NEIRO|PNUT|FARTCOIN|SPX|ACT|HIPPO)/i;
+const LEV_RE=/(UP|DOWN|BULL|BEAR)USDT$/i;
+
+const state={cfg:{...DEFAULTS},scanning:false,results:[],filter:'all',sort:'score',open:null,btcTrend:null};
+
+/* ===== Storage ===== */
+function loadCfg(){ try{const r=localStorage.getItem('ccswing-pc-cfg'); if(r) state.cfg={...DEFAULTS,...JSON.parse(r)};}catch(e){} }
+function saveCfg(){ localStorage.setItem('ccswing-pc-cfg',JSON.stringify(state.cfg)); }
+
+/* ===== Utils ===== */
+const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
+const fmt=(n,d=4)=>{ if(n==null||isNaN(n))return '—'; if(n>=1000)return n.toFixed(2); if(n>=1)return n.toFixed(3); return n.toPrecision(d); };
+const fmtPct=n=>(n>=0?'+':'')+n.toFixed(2)+'%';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const nowTime=()=>new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+function toast(msg,type='ok'){ const t=$('#toast'); t.textContent=msg; t.className='toast show '+(type==='err'?'err':''); setTimeout(()=>t.classList.remove('show'),2500); }
+
+/* ===== Binance ===== */
+async function fJSON(u){ const r=await fetch(u); if(!r.ok)throw new Error('HTTP '+r.status); return r.json(); }
+async function fetchTickers(){ return fJSON(`${BINANCE}/api/v3/ticker/24hr`); }
+async function fetchKlines(s,i,l){ const d=await fJSON(`${BINANCE}/api/v3/klines?symbol=${s}&interval=${i}&limit=${l}`); return d.map(k=>({t:k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5]})); }
+
+/* ===== Indicators ===== */
+function ema(v,p){ if(v.length<p)return[]; const k=2/(p+1); const o=new Array(v.length).fill(NaN); let s=0; for(let i=0;i<p;i++)s+=v[i]; o[p-1]=s/p; for(let i=p;i<v.length;i++)o[i]=v[i]*k+o[i-1]*(1-k); return o; }
+function rsi(c,p=14){
+  const o=new Array(c.length).fill(NaN); if(c.length<p+1)return o;
+  let g=0,l=0; for(let i=1;i<=p;i++){const d=c[i]-c[i-1]; if(d>=0)g+=d; else l-=d;}
+  let ag=g/p,al=l/p; o[p]=al===0?100:100-100/(1+ag/al);
+  for(let i=p+1;i<c.length;i++){const d=c[i]-c[i-1]; const gn=d>0?d:0, ls=d<0?-d:0; ag=(ag*(p-1)+gn)/p; al=(al*(p-1)+ls)/p; o[i]=al===0?100:100-100/(1+ag/al);}
+  return o;
+}
+function macd(c,f=12,sl=26,sg=9){
+  const eF=ema(c,f),eS=ema(c,sl);
+  const ln=c.map((_,i)=>(isNaN(eF[i])||isNaN(eS[i]))?NaN:eF[i]-eS[i]);
+  const src=ln.filter(v=>!isNaN(v)); const sa=ema(src,sg);
+  const off=ln.length-sa.length; const al=new Array(ln.length).fill(NaN);
+  for(let i=0;i<sa.length;i++) al[i+off]=sa[i];
+  const h=ln.map((v,i)=>(isNaN(v)||isNaN(al[i]))?NaN:v-al[i]);
+  return {line:ln,signal:al,hist:h};
+}
+function swingHL(c,lk){ const s=c.slice(-lk); let hi=-Infinity,lo=Infinity,hI=0,lI=0; s.forEach((x,i)=>{if(x.h>hi){hi=x.h;hI=i;} if(x.l<lo){lo=x.l;lI=i;}}); return {high:hi,low:lo,highIdx:hI,lowIdx:lI}; }
+function fib(h,l,r){ return h-(h-l)*r; }
+function hhhl(c,n=30){ const s=c.slice(-n),h=Math.floor(s.length/2); return Math.max(...s.slice(h).map(x=>x.h))>Math.max(...s.slice(0,h).map(x=>x.h)) && Math.min(...s.slice(h).map(x=>x.l))>Math.min(...s.slice(0,h).map(x=>x.l)); }
+function bullDiv(c,ind,n=20){ const cc=c.slice(-n),ii=ind.slice(-n); let l1=Infinity,l1i=-1,l2=Infinity,l2i=-1; for(let i=0;i<cc.length;i++){if(cc[i]<l1){l2=l1;l2i=l1i;l1=cc[i];l1i=i;}else if(cc[i]<l2){l2=cc[i];l2i=i;}} if(l1i<0||l2i<0)return false; const [a,b]=l1i<l2i?[l1i,l2i]:[l2i,l1i]; return cc[b]<cc[a]&&ii[b]>ii[a]; }
+function confirmCandle(c){ const x=c[c.length-1],r=x.h-x.l; if(r<=0)return false; const b=Math.abs(x.c-x.o),lw=Math.min(x.o,x.c)-x.l; const g=x.c>x.o,u=(x.c-x.l)/r>=0.66,wd=lw>=b*1.2; const pv=c.slice(-6,-1).reduce((s,k)=>s+k.v,0)/5; return g&&u&&(wd||b/r<0.4)&&x.v>pv; }
+
+/* ===== BTC ===== */
+async function checkBtc(){ const k=await fetchKlines('BTCUSDT','1d',250); const c=k.map(x=>x.c); const e200=ema(c,200),e50=ema(c,50); const last=c[c.length-1]; state.btcTrend={price:last,bullish:last>e200[e200.length-1]&&e50[e50.length-1]>e200[e200.length-1]}; return state.btcTrend; }
+
+/* ===== Analyse ===== */
+async function analyze(symbol,t24){
+  try{
+    const dk=await fetchKlines(symbol,'1d',250); if(dk.length<210)return null;
+    const cl=dk.map(x=>x.c); const e200=ema(cl,200),e50=ema(cl,50),e20=ema(cl,20);
+    const lp=cl[cl.length-1];
+    const aE200=lp>e200[e200.length-1], e50Up=e50[e50.length-1]>e200[e200.length-1], _hh=hhhl(dk,30);
+    if(!(aE200&&(e50Up||_hh))) return null;
+    const sw=swingHL(dk,30); const f382=fib(sw.high,sw.low,.382),f500=fib(sw.high,sw.low,.5),f618=fib(sw.high,sw.low,.618),fExt=sw.high+(sw.high-sw.low)*.618;
+    const tol=.04,d=v=>Math.abs(lp-v)/lp;
+    const nE50=d(e50[e50.length-1])<tol,nE200=d(e200[e200.length-1])<tol,n382=d(f382)<tol,n500=d(f500)<tol,n618=d(f618)<tol;
+    const inPb=nE50||nE200||n382||n500||n618;
+    let pbLvl='—'; if(nE50)pbLvl='EMA-50'; else if(nE200)pbLvl='EMA-200'; else if(n618)pbLvl='Fib 61.8'; else if(n500)pbLvl='Fib 50'; else if(n382)pbLvl='Fib 38.2';
+
+    const fk=await fetchKlines(symbol,'4h',200); const fc=fk.map(x=>x.c); const fr=rsi(fc,14),fm=macd(fc);
+    const rN=fr[fr.length-1],rP=fr[fr.length-2];
+    const rZ=rN>=35&&rN<=45, rO=rN>35&&rN<60&&rP<rN;
+    const hL=fm.hist[fm.hist.length-1],hP=fm.hist[fm.hist.length-2],hP2=fm.hist[fm.hist.length-3];
+    const mT=(hL>hP)&&(hP<=hP2||(hL>0&&hP<=0));
+    const bd=bullDiv(fc,fr,24);
+    const l30=fk.slice(-30),hf=15; const mA=Math.min(...l30.slice(0,hf).map(x=>x.l)),mB=Math.min(...l30.slice(hf).map(x=>x.l)); const hlOK=mB>mA;
+    const dC=confirmCandle(dk),hC=confirmCandle(fk);
+    const btcOK=state.btcTrend?.bullish??false;
+
+    const factors=[
+      {label:'Daily >EMA-200',ok:aE200&&e50Up},
+      {label:'Hogere highs & lows (30d)',ok:_hh},
+      {label:'Pullback naar '+pbLvl,ok:inPb},
+      {label:'RSI 4h pullback zone',ok:rZ||rO,mid:rO&&!rZ},
+      {label:'MACD 4h draait om',ok:mT},
+      {label:'Bullish divergentie 4h',ok:bd},
+      {label:'Hogere low dan vorige correctie',ok:hlOK},
+      {label:'BTC trend bullish',ok:btcOK},
+      {label:'Bevestigingscandle',ok:dC||hC,mid:hC&&!dC},
+    ];
+    const score=factors.filter(f=>f.ok).length;
+
+    const ref=dC?dk[dk.length-1]:fk[fk.length-1];
+    const entry=ref.c*1.002; const sl=Math.min(ref.l,lp*.97)*.998;
+    const slPct=(sl-entry)/entry*100;
+    const tp1=sw.high, tp1Pct=(tp1-entry)/entry*100;
+    const tp2=fExt, tp2Pct=(tp2-entry)/entry*100;
+    const risk=entry-sl; const rr1=risk>0?(tp1-entry)/risk:0; const rr2=risk>0?(tp2-entry)/risk:0;
+
+    // TP realism check — swing-high uit oude periode = onbruikbaar als target
+    const tpRealistic = tp1Pct>0 && tp1Pct<=25 && tp2Pct<=60;
+    const tpTooFar = tp1Pct>25 || tp2Pct>60;
+
+    return {
+      symbol,price:lp,chg24:t24?parseFloat(t24.priceChangePercent):0,vol24M:t24?parseFloat(t24.quoteVolume)/1e6:0,
+      score,factors,inPullback:inPb,pullbackLevel:pbLvl,
+      rsi4h:rN,macdTurning:mT,bullDiv:bd,dailyConfirm:dC,h4Confirm:hC,btcOK,
+      aboveEma200:aE200,higherHL:_hh,higherLowOK:hlOK,
+      ema20d:e20[e20.length-1],
+      entry,sl,slPct,tp1,tp1Pct,tp2,tp2Pct,rr1,rr2,
+      tpRealistic, tpTooFar
+    };
+  }catch(e){ return null; }
+}
+
+/* ===========================================================
+   RENDER
+   =========================================================== */
+function sortResults(arr){
+  const s=state.sort;
+  return [...arr].sort((a,b)=>{
+    if(s==='volume') return b.vol24M-a.vol24M;
+    if(s==='rr') return b.rr1-a.rr1;
+    if(s==='chg') return b.chg24-a.chg24;
+    return b.score-a.score || b.vol24M-a.vol24M; // score default
+  });
+}
+function filtered(){
+  const f=state.filter;
+  let r=state.results;
+  if(f==='strong') r=r.filter(x=>x.score>=5 && x.tpRealistic);
+  else if(f==='watching') r=r.filter(x=>(x.score>=3&&x.score<5) || (x.score>=5 && !x.tpRealistic));
+  else if(f==='setup') r=r.filter(x=>x.inPullback);
+  return sortResults(r);
+}
+
+function rowHTML(r){
+  let cls='s-low'; if(r.score>=5 && r.tpRealistic) cls='s-strong'; else if(r.score>=3) cls='s-mid';
+  const dotMacd=r.macdTurning?'on':'';
+  const dotDiv=r.bullDiv?'on':'';
+  const dotConf=r.dailyConfirm?'on':(r.h4Confirm?'mid':'');
+  const dotBtc=r.btcOK?'on':'';
+  const pbHtml = r.inPullback ? `<span class="pb">${r.pullbackLevel}</span>` : `<span class="pb none">—</span>`;
+  const warnIcon = r.tpTooFar ? `<span class="tp-warn" title="TP-targets te ver — swing-high uit oude periode">⚠</span>` : '';
+  return `
+    <td><span class="sym">${r.symbol.replace('USDT','')}<span class="quote"> / USDT</span> ${warnIcon}</span></td>
+    <td class="num">${fmt(r.price)}</td>
+    <td class="num ${r.chg24>=0?'up':'dn'}">${fmtPct(r.chg24)}</td>
+    <td class="num">${r.vol24M.toFixed(0)}M</td>
+    <td>${pbHtml}</td>
+    <td class="ctr">
+      <div class="dots" title="MACD · Div · Confirm · BTC">
+        <div class="dot ${dotMacd}"></div>
+        <div class="dot ${dotDiv}"></div>
+        <div class="dot ${dotConf}"></div>
+        <div class="dot ${dotBtc}"></div>
+      </div>
+    </td>
+    <td class="num"><span class="badge ${cls}">${r.score}/9</span></td>
+    <td class="num">${r.tpTooFar?'<span class="muted">— </span>':(r.rr1>0?r.rr1.toFixed(1)+':1':'—')}</td>
+  `;
+}
+
+function detailHTML(r){
+  const confs = r.factors.map(f=>{
+    const cls = f.ok?(f.mid?'mid':'ok'):'no';
+    const icon = f.ok?(f.mid?'~':'✓'):'·';
+    return `<div class="conf-item ${f.ok?'':'no'}"><span class="ico ${cls}">${icon}</span>${f.label}</div>`;
+  }).join('');
+
+  const tpWarn = r.tpTooFar ? `
+    <div class="tp-warn-banner">
+      <div class="warn-head">⚠ TP-targets te ver weg</div>
+      <div class="warn-body">De swing-high zit ${r.tp1Pct.toFixed(0)}% boven entry. Dat is een piek uit een oudere fase, geen haalbaar zwaaipunt. Setup niet handelen als swing — of zelf realistische targets bepalen op TradingView (volgende lokale weerstand).</div>
+    </div>
+  ` : '';
+
+  return `
+    <td colspan="8">
+      <div class="detail-content">
+        <div class="detail-section">
+          <h4>Confluence-check</h4>
+          <div class="confluence">${confs}</div>
+        </div>
+        <div class="detail-section">
+          <h4>Trade-plan</h4>
+          ${tpWarn}
+          <div class="plan-row"><span class="lbl">Entry (limiet)</span><span class="v">${fmt(r.entry)}</span></div>
+          <div class="plan-row"><span class="lbl">Stop-loss</span><span class="v dn">${fmt(r.sl)} (${r.slPct.toFixed(1)}%)</span></div>
+          <div class="plan-row"><span class="lbl">TP1 swing-high</span><span class="v ${r.tpTooFar?'warn':'up'}">${fmt(r.tp1)} (+${r.tp1Pct.toFixed(1)}%)</span></div>
+          <div class="plan-row"><span class="lbl">TP2 fib 1.618</span><span class="v ${r.tpTooFar?'warn':'up'}">${fmt(r.tp2)} (+${r.tp2Pct.toFixed(1)}%)</span></div>
+          <div class="plan-row"><span class="lbl">R/R TP1 / TP2</span><span class="v">${r.rr1.toFixed(1)}:1 → ${r.rr2.toFixed(1)}:1</span></div>
+          <div class="plan-row"><span class="lbl">Trail onder</span><span class="v">20-EMA · ${fmt(r.ema20d)}</span></div>
+          <div class="plan-row"><span class="lbl">Sizing</span><span class="v">${r.score>=5 && r.tpRealistic?'3-4% in 2-3 entries':(r.tpTooFar?'niet handelen — TP te ver':'max 2%')}</span></div>
+        </div>
+        <div class="detail-actions">
+          <button class="act-btn" data-act="tv" data-sym="${r.symbol}">📊 TradingView openen</button>
+          <button class="act-btn ${r.tpTooFar?'':'primary'}" data-act="tg" data-sym="${r.symbol}" ${r.tpTooFar?'disabled':''}>${r.tpTooFar?'⚠ Telegram geblokkeerd':'✈ Stuur naar Telegram'}</button>
+        </div>
+      </div>
+    </td>
+  `;
+}
+
+function renderTable(){
+  const tb=$('#tbody');
+  const list=filtered();
+
+  if(!state.results.length){
+    tb.innerHTML=`<tr><td colspan="8" style="padding:0">
+      <div class="empty">
+        <div class="emoji">📡</div>
+        <div class="title">Nog geen scan uitgevoerd</div>
+        <div class="sub">Klik op <b>Scan starten</b> om de Binance USDT-markt af te tasten op long swing setups.</div>
+      </div>
+    </td></tr>`;
+    return;
+  }
+  if(!list.length){
+    tb.innerHTML=`<tr><td colspan="8" style="padding:0">
+      <div class="empty">
+        <div class="emoji">🔍</div>
+        <div class="title">Geen setups voor deze filter</div>
+        <div class="sub">Probeer een ander filter of start een nieuwe scan.</div>
+      </div>
+    </td></tr>`;
+    return;
+  }
+
+  let html='';
+  list.forEach(r=>{
+    const isOpen=state.open===r.symbol;
+    html += `<tr class="row ${isOpen?'open':''}" data-sym="${r.symbol}">${rowHTML(r)}</tr>`;
+    html += `<tr class="detail ${isOpen?'open':''}" data-detail="${r.symbol}">${detailHTML(r)}</tr>`;
+  });
+  tb.innerHTML=html;
+
+  $$('.tbl tr.row').forEach(tr=>{
+    tr.onclick=()=>{
+      const sym=tr.dataset.sym;
+      state.open = state.open===sym?null:sym;
+      renderTable();
+    };
+  });
+  $$('.act-btn').forEach(b=>{
+    b.onclick=(e)=>{
+      e.stopPropagation();
+      if(b.disabled) return;
+      const sym=b.dataset.sym, act=b.dataset.act;
+      const r=state.results.find(x=>x.symbol===sym); if(!r)return;
+      if(act==='tv') window.open(`https://www.tradingview.com/chart/?symbol=BINANCE:${sym}`,'_blank');
+      if(act==='tg'){
+        if(r.tpTooFar){ toast('TP-targets te ver — niet bruikbaar als swing-trade','err'); return; }
+        sendSetupToTelegram(r);
+      }
+    };
+  });
+}
+
+function updateCounts(){
+  const s=state.results;
+  const strongOnly = s.filter(r=>r.score>=5 && r.tpRealistic);
+  const watching = s.filter(r=>(r.score>=3&&r.score<5) || (r.score>=5 && !r.tpRealistic));
+  $('#cAll').textContent=s.length;
+  $('#cStrong').textContent=strongOnly.length;
+  $('#cWatch').textContent=watching.length;
+  $('#cSetup').textContent=s.filter(r=>r.inPullback).length;
+  $('#sScanned').textContent=s.length;
+  $('#sStrong').textContent=strongOnly.length;
+  $('#sWatching').textContent=watching.length;
+}
+
+function setProgress(label,pct){
+  const p=$('#prog'); p.classList.add('show');
+  $('#progLbl').textContent=label;
+  $('#progPct').textContent=pct+'%';
+  $('#progFill').style.width=pct+'%';
+}
+function hideProgress(){ $('#prog').classList.remove('show'); }
+
+/* ===========================================================
+   SCAN
+   =========================================================== */
+async function runScan(){
+  if(state.scanning) return;
+  state.scanning=true; state.results=[]; state.open=null;
+  $('#kbScan').disabled=true; $('#kbScan').textContent='🔄 Scannen...';
+  $('#headStatus').textContent='scanning...';
+  renderTable();
+
+  try{
+    setProgress('BTC-trend bepalen...',2);
+    await checkBtc();
+    const btcEl=$('#sBtc');
+    btcEl.textContent=state.btcTrend.bullish?'bullish':'bearish';
+    btcEl.className='v '+(state.btcTrend.bullish?'up':'dn');
+
+    setProgress('Tickers ophalen...',5);
+    const tk=await fetchTickers();
+    const cands=tk
+      .filter(t=>t.symbol.endsWith('USDT'))
+      .filter(t=>!LEV_RE.test(t.symbol))
+      .filter(t=>{ if(!state.cfg.exclMeme) return true; return !MEME_RE.test(t.symbol.replace(/USDT$/,'')); })
+      .filter(t=>parseFloat(t.quoteVolume)>=state.cfg.minVol)
+      .sort((a,b)=>parseFloat(b.quoteVolume)-parseFloat(a.quoteVolume))
+      .slice(0,state.cfg.maxPairs);
+
+    let done=0;
+    for(const t of cands){
+      done++;
+      const pct=Math.round(5+done/cands.length*92);
+      setProgress(`${done}/${cands.length} · ${t.symbol.replace('USDT','')}`,pct);
+      const r=await analyze(t.symbol,t);
+      if(r){ state.results.push(r); state.results.sort((a,b)=>b.score-a.score||b.vol24M-a.vol24M); renderTable(); updateCounts(); }
+      await sleep(60);
+    }
+
+    setProgress('Klaar',100);
+    setTimeout(hideProgress,1200);
+    $('#sTime').textContent=nowTime();
+    $('#headStatus').textContent='binance · usdt · long-only';
+
+    if(state.cfg.auto && state.cfg.token && state.cfg.chat){
+      const strong=state.results.filter(r=>r.score>=5 && r.tpRealistic);
+      for(const r of strong) await sendSetupToTelegram(r,true);
+      if(strong.length) toast(`${strong.length} strong setups → Telegram`);
+    }
+  }catch(e){
+    hideProgress();
+    toast('Fout: '+e.message,'err');
+    $('#headStatus').textContent='fout — '+e.message;
+  }finally{
+    state.scanning=false;
+    $('#kbScan').disabled=false; $('#kbScan').textContent='🔍 Scan opnieuw';
+  }
+}
+
+/* ===========================================================
+   TELEGRAM
+   =========================================================== */
+async function sendTelegram(text){
+  if(!state.cfg.token||!state.cfg.chat){ toast('Configureer Telegram in instellingen','err'); return false; }
+  const r=await fetch(`https://api.telegram.org/bot${state.cfg.token}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:state.cfg.chat,text,parse_mode:'Markdown',disable_web_page_preview:true})});
+  const j=await r.json();
+  if(!j.ok){ toast('Telegram: '+(j.description||'fout'),'err'); return false; }
+  return true;
+}
+async function sendSetupToTelegram(r,silent=false){
+  const txt=`🎯 *SWING LONG · ${r.symbol}*  _score ${r.score}/9_
+
+*Trend*: ${r.aboveEma200?'✓':'✗'} >EMA-200 · ${r.higherHL?'✓':'✗'} HH/HL
+*Pullback*: ${r.inPullback?r.pullbackLevel:'geen'}
+*RSI 4h*: ${r.rsi4h.toFixed(1)} · *MACD*: ${r.macdTurning?'draait om':'—'}
+*Div*: ${r.bullDiv?'bullish':'—'} · *BTC*: ${r.btcOK?'bullish':'bearish'}
+*Confirm*: ${r.dailyConfirm?'1d':(r.h4Confirm?'4h':'—')}
+
+*Plan*
+Entry: \`${fmt(r.entry)}\`
+SL: \`${fmt(r.sl)}\` (${r.slPct.toFixed(1)}%)
+TP1: \`${fmt(r.tp1)}\` (+${r.tp1Pct.toFixed(1)}%) — 50% out
+TP2: \`${fmt(r.tp2)}\` (+${r.tp2Pct.toFixed(1)}%)
+R/R: ${r.rr1.toFixed(1)}:1 → ${r.rr2.toFixed(1)}:1
+
+Sizing: ${r.score>=5?'3-4% in 2-3 entries':'max 2%'}
+[TradingView](https://www.tradingview.com/chart/?symbol=BINANCE:${r.symbol})`;
+  const ok=await sendTelegram(txt);
+  if(ok && !silent) toast(r.symbol+' → Telegram');
+}
+
+/* ===========================================================
+   EXPORT
+   =========================================================== */
+function exportResults(){
+  if(!state.results.length){ toast('Niets te exporteren','err'); return; }
+  const headers=['Symbol','Price','Chg24h','Vol24M','Score','Pullback','RSI4h','Entry','SL','TP1','TP2','RR1','RR2'];
+  const rows=state.results.map(r=>[r.symbol,r.price,r.chg24.toFixed(2),r.vol24M.toFixed(1),r.score,r.pullbackLevel,r.rsi4h.toFixed(1),r.entry.toFixed(6),r.sl.toFixed(6),r.tp1.toFixed(6),r.tp2.toFixed(6),r.rr1.toFixed(2),r.rr2.toFixed(2)]);
+  const csv=[headers,...rows].map(r=>r.join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=`cc-swing-${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  URL.revokeObjectURL(url);
+  toast('CSV gedownload');
+}
+
+/* ===========================================================
+   MODAL
+   =========================================================== */
+function openModal(){
+  $('#cfgToken').value=state.cfg.token; $('#cfgChat').value=state.cfg.chat;
+  $('#cfgMinVol').value=state.cfg.minVol; $('#cfgMaxPairs').value=state.cfg.maxPairs;
+  $('#cfgAuto').checked=state.cfg.auto; $('#cfgExclMeme').checked=state.cfg.exclMeme;
+  $('#modal').classList.add('show');
+}
+function closeModal(){ $('#modal').classList.remove('show'); }
+function saveModal(){
+  state.cfg.token=$('#cfgToken').value.trim();
+  state.cfg.chat=$('#cfgChat').value.trim();
+  state.cfg.minVol=parseInt($('#cfgMinVol').value)||DEFAULTS.minVol;
+  state.cfg.maxPairs=parseInt($('#cfgMaxPairs').value)||DEFAULTS.maxPairs;
+  state.cfg.auto=$('#cfgAuto').checked;
+  state.cfg.exclMeme=$('#cfgExclMeme').checked;
+  saveCfg(); closeModal(); toast('Opgeslagen');
+}
+async function testTelegram(){
+  state.cfg.token=$('#cfgToken').value.trim();
+  state.cfg.chat=$('#cfgChat').value.trim();
+  const ok=await sendTelegram('✅ CC Swing Scanner Desktop — verbinding werkt');
+  if(ok) toast('Telegram test gelukt');
+}
+
+/* ===========================================================
+   WIRING
+   =========================================================== */
+loadCfg();
+$('#kbScan').onclick=runScan;
+$('#kbExport').onclick=exportResults;
+$('#kbClear').onclick=()=>{ state.results=[]; state.open=null; renderTable(); updateCounts(); $('#sBtc').textContent='—'; $('#sBtc').className='v'; $('#sTime').textContent='—'; };
+$('#btnSettings').onclick=openModal;
+$('#btnInfo').onclick=()=>$('#infoModal').classList.add('show');
+$('#infoClose').onclick=()=>$('#infoModal').classList.remove('show');
+$('#modalClose').onclick=closeModal;
+$('#btnSave').onclick=saveModal;
+$('#btnTest').onclick=testTelegram;
+$('#modal').onclick=e=>{ if(e.target.id==='modal') closeModal(); };
+$('#infoModal').onclick=e=>{ if(e.target.id==='infoModal') $('#infoModal').classList.remove('show'); };
+
+$('#sortSel').onchange=e=>{ state.sort=e.target.value; renderTable(); };
+
+$$('.filter').forEach(p=>{
+  p.onclick=()=>{
+    $$('.filter').forEach(x=>x.classList.remove('active'));
+    p.classList.add('active');
+    state.filter=p.dataset.f;
+    state.open=null;
+    renderTable();
+  };
+});
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){ closeModal(); $('#infoModal').classList.remove('show'); }
+  if(e.key==='s' && !state.scanning && e.target.tagName!=='INPUT') runScan();
+});
+</script>
+</body>
+</html>
