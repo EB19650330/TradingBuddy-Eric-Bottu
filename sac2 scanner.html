@@ -1,0 +1,1594 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAC-2 SMC Scanner · Binance 15m</title>
+<style>
+:root{
+  --bg-main:        #0E1621;
+  --bg-sidebar:     #17212B;
+  --bg-bubble:      #182533;
+  --bg-bubble-hov:  #1F2C3A;
+  --bg-system:      rgba(36, 52, 73, 0.6);
+  --border:         rgba(255,255,255,0.06);
+  --text-primary:   #E9EDF0;
+  --text-secondary: #7D8E9F;
+  --text-muted:     #5E6E7E;
+  --accent:         #6AB3F3;
+  --accent-strong:  #4EA5E0;
+  --long:           #4ECB71;
+  --long-glow:      rgba(78,203,113,0.15);
+  --short:          #F0535C;
+  --short-glow:     rgba(240,83,92,0.15);
+  --gold:           #F5BE3F;
+  --shadow-bubble:  0 1px 2px rgba(0,0,0,0.25);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+
+html,body{
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+body{
+  background-image:
+    radial-gradient(ellipse 800px 600px at 50% -10%, rgba(106,179,243,0.06), transparent 60%),
+    radial-gradient(ellipse 600px 400px at 100% 100%, rgba(78,203,113,0.04), transparent 70%);
+  background-attachment: fixed;
+  padding: 24px 12px 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.app{
+  width: 100%;
+  max-width: 660px;
+  background: var(--bg-main);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  min-height: 600px;
+}
+
+/* ============ HEADER ============ */
+.chat-header{
+  background: var(--bg-sidebar);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.avatar{
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4EA5E0 0%, #1B5C8C 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 600;
+  color: white;
+  flex-shrink: 0;
+  letter-spacing: -0.5px;
+  position: relative;
+}
+.avatar::after{
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  background: var(--long);
+  border-radius: 50%;
+  border: 2.5px solid var(--bg-sidebar);
+}
+.avatar.scanning::after{ background: var(--gold); animation: pulse 1.4s infinite; }
+
+@keyframes pulse{
+  0%,100%{opacity:1; transform:scale(1);}
+  50%{opacity:0.6; transform:scale(1.15);}
+}
+
+.chat-info{ flex: 1; min-width: 0; }
+.chat-title{
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.1px;
+  line-height: 1.2;
+}
+.chat-status{
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  font-feature-settings: "tnum";
+}
+.chat-status.live{ color: var(--long); }
+
+.header-actions{ display: flex; gap: 4px; }
+.icon-btn{
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  font-size: 18px;
+}
+.icon-btn:hover{ background: rgba(255,255,255,0.06); color: var(--text-primary); }
+.icon-btn:active{ transform: scale(0.95); }
+.icon-btn.spinning svg{ animation: spin 1s linear infinite; }
+@keyframes spin{ to{ transform: rotate(360deg); } }
+
+/* ============ CHAT BODY ============ */
+.chat{
+  flex: 1;
+  background: var(--bg-main);
+  padding: 16px 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 70vh;
+  min-height: 400px;
+}
+
+/* Subtle dotted background pattern, like Telegram wallpaper but minimal */
+.chat{
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* System message (date separator / status) */
+.system-msg{
+  align-self: center;
+  background: var(--bg-system);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 12px;
+  margin: 4px 0;
+  backdrop-filter: blur(8px);
+  letter-spacing: 0.2px;
+}
+
+/* Signal bubble */
+.msg{
+  max-width: 86%;
+  align-self: flex-start;
+  background: var(--bg-bubble);
+  border-radius: 12px 12px 12px 4px;
+  padding: 0;
+  box-shadow: var(--shadow-bubble);
+  position: relative;
+  overflow: hidden;
+  animation: msg-appear 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  border-left: 3px solid transparent;
+}
+@keyframes msg-appear{
+  from{ opacity: 0; transform: translateY(8px) scale(0.98); }
+  to  { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+.msg.long  { border-left-color: var(--long);  }
+.msg.short { border-left-color: var(--short); }
+
+.msg-head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 6px;
+  gap: 10px;
+}
+
+.direction-badge{
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.direction-badge.long  { background: var(--long-glow);  color: var(--long);  }
+.direction-badge.short { background: var(--short-glow); color: var(--short); }
+
+.symbol-name{
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+}
+
+.score-chip{
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gold);
+  background: rgba(245,190,63,0.1);
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-feature-settings: "tnum";
+}
+
+.msg-stats{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--border);
+  margin: 4px 0 8px;
+}
+.stat{
+  background: var(--bg-bubble);
+  padding: 8px 14px;
+}
+.stat-label{
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.stat-value{
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-top: 2px;
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+}
+.stat-value.mono{
+  font-family: "SF Mono", "Menlo", "Consolas", monospace;
+  font-size: 12px;
+}
+
+.checks{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 14px 10px;
+}
+.check{
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.04);
+  padding: 3px 7px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+.check.active{ color: var(--long); background: var(--long-glow); }
+.check.active::before{ content: "✓"; font-weight: 700; }
+.check:not(.active)::before{ content: "·"; color: var(--text-muted); }
+
+.msg-actions{
+  display: flex;
+  border-top: 1px solid var(--border);
+}
+.action-btn{
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 11px 14px;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: inherit;
+}
+.action-btn:hover{ background: rgba(106,179,243,0.08); }
+.action-btn:active{ background: rgba(106,179,243,0.15); }
+.action-btn + .action-btn{ border-left: 1px solid var(--border); }
+.action-btn .ico{ font-size: 13px; opacity: 0.9; }
+
+.msg-time{
+  position: absolute;
+  bottom: 47px;
+  right: 12px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  font-feature-settings: "tnum";
+}
+
+/* Welcome / empty card */
+.welcome{
+  align-self: flex-start;
+  background: var(--bg-bubble);
+  border-radius: 12px 12px 12px 4px;
+  padding: 14px 16px;
+  max-width: 86%;
+  box-shadow: var(--shadow-bubble);
+  animation: msg-appear 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.welcome h2{
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.welcome p{
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+.welcome ul{
+  margin: 8px 0 0 4px;
+  padding-left: 16px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Typing indicator */
+.typing{
+  align-self: flex-start;
+  background: var(--bg-bubble);
+  border-radius: 12px 12px 12px 4px;
+  padding: 12px 16px;
+  display: flex;
+  gap: 4px;
+  box-shadow: var(--shadow-bubble);
+}
+.typing span{
+  width: 7px;
+  height: 7px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  animation: typing-dot 1.2s infinite;
+}
+.typing span:nth-child(2){ animation-delay: 0.2s; }
+.typing span:nth-child(3){ animation-delay: 0.4s; }
+@keyframes typing-dot{
+  0%,60%,100%{ opacity: 0.3; transform: translateY(0); }
+  30%{ opacity: 1; transform: translateY(-3px); }
+}
+
+/* ============ FOOTER ============ */
+.chat-footer{
+  background: var(--bg-sidebar);
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.scan-btn{
+  flex: 1;
+  background: linear-gradient(135deg, var(--accent-strong) 0%, #2A7BB9 100%);
+  color: white;
+  border: none;
+  padding: 11px 18px;
+  border-radius: 22px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s, opacity 0.2s;
+  font-family: inherit;
+  letter-spacing: 0.2px;
+  box-shadow: 0 2px 8px rgba(42,123,185,0.25);
+}
+.scan-btn:hover:not(:disabled){
+  box-shadow: 0 4px 14px rgba(42,123,185,0.4);
+  transform: translateY(-1px);
+}
+.scan-btn:active:not(:disabled){ transform: translateY(0); }
+.scan-btn:disabled{ opacity: 0.55; cursor: not-allowed; }
+
+.auto-toggle{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  user-select: none;
+  cursor: pointer;
+}
+.switch{
+  position: relative;
+  width: 34px;
+  height: 18px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+.switch::after{
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: white;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: left 0.2s, background 0.2s;
+}
+.auto-toggle input{ display: none; }
+.auto-toggle input:checked + .switch{ background: var(--accent-strong); }
+.auto-toggle input:checked + .switch::after{ left: 18px; }
+
+/* Mobile */
+@media (max-width: 700px){
+  body{ padding: 0; }
+  .app{ border-radius: 0; min-height: 100vh; border: none; }
+  .chat{ max-height: none; }
+}
+
+/* Scrollbar */
+.chat::-webkit-scrollbar{ width: 6px; }
+.chat::-webkit-scrollbar-track{ background: transparent; }
+.chat::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.08); border-radius: 3px; }
+.chat::-webkit-scrollbar-thumb:hover{ background: rgba(255,255,255,0.15); }
+
+/* ============ MODAL ============ */
+.modal-overlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+  animation: fade-in 0.18s ease;
+}
+.modal-overlay.open{ display: flex; }
+@keyframes fade-in{ from{opacity:0;} to{opacity:1;} }
+
+.modal{
+  background: var(--bg-sidebar);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 460px;
+  border: 1px solid var(--border);
+  box-shadow: 0 25px 70px rgba(0,0,0,0.6);
+  animation: modal-up 0.25s cubic-bezier(0.2,0.8,0.2,1);
+  overflow: hidden;
+}
+@keyframes modal-up{
+  from{ opacity:0; transform: translateY(20px) scale(0.96); }
+  to  { opacity:1; transform: translateY(0)    scale(1); }
+}
+
+.modal-head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-title{
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  letter-spacing: -0.1px;
+}
+.modal-close{
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  line-height: 1;
+}
+.modal-close:hover{ background: rgba(255,255,255,0.06); color: var(--text-primary); }
+
+.modal-body{ padding: 16px 18px 8px; max-height: 70vh; overflow-y: auto; }
+.modal-foot{
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  background: rgba(0,0,0,0.12);
+}
+
+.field{ margin-bottom: 14px; }
+.field-label{
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.field-input{
+  width: 100%;
+  background: var(--bg-bubble);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-family: "SF Mono","Menlo","Consolas",monospace;
+  font-size: 13px;
+  outline: none;
+  transition: border 0.15s;
+}
+.field-input:focus{ border-color: var(--accent); }
+.field-hint{
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+.field-hint a{ color: var(--accent); text-decoration: none; }
+.field-hint a:hover{ text-decoration: underline; }
+.field-hint code{
+  background: rgba(255,255,255,0.05);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: "SF Mono","Menlo","Consolas",monospace;
+}
+
+.btn{
+  background: var(--bg-bubble);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  padding: 9px 15px;
+  border-radius: 20px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.btn:hover:not(:disabled){ background: var(--bg-bubble-hov); }
+.btn:disabled{ opacity: 0.55; cursor: not-allowed; }
+.btn-primary{
+  background: var(--accent-strong);
+  color: white;
+  border-color: var(--accent-strong);
+}
+.btn-primary:hover:not(:disabled){ background: var(--accent); border-color: var(--accent); }
+
+.tg-status{
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  background: var(--bg-bubble);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.tg-status .dot{
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  box-shadow: 0 0 0 0 currentColor;
+}
+.tg-status.connected{ color: var(--long); }
+.tg-status.connected .dot{ background: var(--long); animation: pulse 1.8s infinite; }
+
+.tg-badge{
+  display: none;
+  width: 8px; height: 8px;
+  background: var(--long);
+  border-radius: 50%;
+  position: absolute;
+  top: 6px; right: 6px;
+  border: 2px solid var(--bg-sidebar);
+}
+.icon-btn.tg-on .tg-badge{ display: block; }
+
+.toggle-row{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0 10px;
+  font-size: 13.5px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  padding-top: 14px;
+}
+
+.section-divider{
+  height: 1px;
+  background: var(--border);
+  margin: 18px -18px 16px;
+}
+.section-title{
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.section-title button{
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 0;
+}
+.section-title button:hover{ text-decoration: underline; }
+
+.param-row{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 0;
+  gap: 12px;
+}
+.param-row + .param-row{ border-top: 1px solid var(--border); }
+.param-info{ flex: 1; min-width: 0; }
+.param-label{
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.param-hint{
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+.param-input{
+  width: 84px;
+  background: var(--bg-bubble);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-family: "SF Mono","Menlo","Consolas",monospace;
+  font-size: 13px;
+  text-align: right;
+  outline: none;
+  transition: border 0.15s;
+  -moz-appearance: textfield;
+}
+.param-input::-webkit-outer-spin-button,
+.param-input::-webkit-inner-spin-button{ -webkit-appearance: none; margin: 0; }
+.param-input:focus{ border-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <header class="chat-header">
+    <div class="avatar" id="avatar">📡</div>
+    <div class="chat-info">
+      <div class="chat-title">SAC-2 SMC Scanner</div>
+      <div class="chat-status" id="status">Binance Spot · 15m · klaar</div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="settingsBtn" title="Telegram instellingen" style="position:relative;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span class="tg-badge"></span>
+      </button>
+      <button class="icon-btn" id="refreshBtn" title="Opnieuw scannen">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 0 0-15.5-6.3L3 8"/>
+          <path d="M3 4v4h4"/>
+          <path d="M3 12a9 9 0 0 0 15.5 6.3L21 16"/>
+          <path d="M21 20v-4h-4"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="chat" id="chat">
+    <div class="system-msg" id="dateLabel"></div>
+    <div class="welcome">
+      <h2>👋 SAC-2 SMC Scanner</h2>
+      <p>Ik scan Binance Spot USDT pairs (24h volume ≥ $1M) op 15m candles en lever pas een signaal als ALLE criteria samen kloppen:</p>
+      <ul>
+        <li>Displacement candle (&gt; 1.8× ATR)</li>
+        <li>FVG gevormd na de displacement</li>
+        <li>Prijs aan juiste kant van Equilibrium</li>
+        <li>Prijs in retrace naar de FVG zone</li>
+      </ul>
+      <p style="margin-top:10px;font-size:12px;color:var(--text-muted);">
+        💡 Tip: open ⚙️ rechtsboven om Telegram pushmeldingen aan te zetten.
+      </p>
+    </div>
+  </main>
+
+  <footer class="chat-footer">
+    <button class="scan-btn" id="scanBtn">Start scan</button>
+    <label class="auto-toggle">
+      <input type="checkbox" id="autoToggle">
+      <span class="switch"></span>
+      Auto
+    </label>
+  </footer>
+
+</div>
+
+<!-- Telegram settings modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">
+        <span style="font-size:18px;">✈️</span> Telegram pushmeldingen
+      </div>
+      <button class="modal-close" id="closeModal" title="Sluiten">×</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="tg-status" id="tgStatus">
+        <div class="dot"></div>
+        <div id="tgStatusText">Niet geconfigureerd</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Bot Token</label>
+        <input type="password" class="field-input" id="botToken" placeholder="123456:ABC-DEF1234..." autocomplete="off" spellcheck="false">
+        <div class="field-hint">
+          Open <a href="https://t.me/BotFather" target="_blank">@BotFather</a> in Telegram → stuur <code>/newbot</code> → kies een naam → kopieer het token dat hij teruggeeft.
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Chat ID</label>
+        <input type="text" class="field-input" id="chatId" placeholder="123456789" autocomplete="off" spellcheck="false">
+        <div class="field-hint">
+          Stuur eerst <code>/start</code> aan je nieuwe bot (zodat hij je mag berichten). Open daarna <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a> en stuur <code>/start</code> — die geeft je je Chat ID.
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <span>Pushmeldingen ingeschakeld</span>
+        <label class="auto-toggle" style="margin:0;">
+          <input type="checkbox" id="tgEnabled">
+          <span class="switch"></span>
+        </label>
+      </div>
+
+      <div class="field-hint" style="margin-top:4px;padding-bottom:6px;">
+        Alleen <b>nieuwe</b> signalen worden gepusht — geen spam wanneer dezelfde setup blijft staan tussen scans. Token wordt lokaal in je browser opgeslagen.
+      </div>
+
+      <div class="section-divider"></div>
+
+      <div class="section-title">
+        <span>SAC-2 Parameters</span>
+        <button id="resetParams">↺ Standaard</button>
+      </div>
+
+      <div class="param-row">
+        <div class="param-info">
+          <div class="param-label">Swing lookback</div>
+          <div class="param-hint">Candles links/rechts voor swing detectie (stop-ref &amp; magnet)</div>
+        </div>
+        <input type="number" class="param-input" id="pSwing" min="1" max="5" step="1">
+      </div>
+
+      <div class="param-row">
+        <div class="param-info">
+          <div class="param-label">Dominante lookback</div>
+          <div class="param-hint">Candles terug voor DOM HIGH/LOW + Equilibrium</div>
+        </div>
+        <input type="number" class="param-input" id="pDom" min="20" max="500" step="10">
+      </div>
+
+      <div class="param-row">
+        <div class="param-info">
+          <div class="param-label">EQH/EQL afstand %</div>
+          <div class="param-hint">Max afstand tussen swings om als &quot;equal&quot; te tellen</div>
+        </div>
+        <input type="number" class="param-input" id="pEq" min="0.05" max="1" step="0.05">
+      </div>
+
+      <div class="param-row">
+        <div class="param-info">
+          <div class="param-label">Displacement ATR ×</div>
+          <div class="param-hint">Hoe groot een candle moet zijn t.o.v. ATR(14)</div>
+        </div>
+        <input type="number" class="param-input" id="pAtr" min="1" max="3" step="0.1">
+      </div>
+
+      <div class="field-hint" style="margin-top:10px;">
+        Wijzigingen worden bij de volgende scan toegepast. Strenger = minder maar sterkere signalen.
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="testTg">Test bericht</button>
+      <button class="btn btn-primary" id="saveTg">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// =============================================================
+// CONFIG (vast)
+// =============================================================
+const BINANCE_API     = "https://api.binance.com/api/v3";
+const TIMEFRAME       = "15m";
+const CANDLES         = 120;
+const MIN_VOLUME_USDT = 1_000_000;
+
+const ATR_PERIOD     = 14;
+const FVG_ATR_FACTOR = 0.15;
+const DISP_LOOKBACK  = 5;
+const FVG_LOOKBACK   = 5;
+const RETRACE_BUFFER = 0.003;
+const CONCURRENCY    = 12;
+
+const EXCLUDED_SUFFIXES = ["UPUSDT","DOWNUSDT","BULLUSDT","BEARUSDT"];
+const EXCLUDED_BASES    = new Set([
+  // Stablecoins en fiat
+  "USDC","BUSD","TUSD","FDUSD","DAI","USDP","EUR","GBP","AEUR","EURI","USD1","PYUSD",
+  // Gerebrande/gemigreerde tokens die soms nog in Binance's API blijven hangen
+  // maar niet meer betrouwbaar verhandelbaar zijn op Spot.
+  "GAL"   // Galxe → gemigreerd naar Gravity (G) in juli 2024
+]);
+
+// =============================================================
+// USER-INSTELBARE PARAMETERS
+// =============================================================
+const DEFAULT_PARAMS = {
+  swingLookback: 2,
+  domLookback:   100,
+  eqhEqlPct:     0.15,
+  atrMult:       1.8,
+};
+function loadParam(key, def){
+  const v = parseFloat(localStorage.getItem("sac_" + key));
+  return (isNaN(v) || v <= 0) ? def : v;
+}
+const params = {
+  swingLookback: loadParam("swingLookback", DEFAULT_PARAMS.swingLookback),
+  domLookback:   loadParam("domLookback",   DEFAULT_PARAMS.domLookback),
+  eqhEqlPct:     loadParam("eqhEqlPct",     DEFAULT_PARAMS.eqhEqlPct),
+  atrMult:       loadParam("atrMult",       DEFAULT_PARAMS.atrMult),
+};
+
+// =============================================================
+// DOM
+// =============================================================
+const chat       = document.getElementById("chat");
+const status     = document.getElementById("status");
+const avatar     = document.getElementById("avatar");
+const scanBtn    = document.getElementById("scanBtn");
+const refreshBtn = document.getElementById("refreshBtn");
+const autoToggle = document.getElementById("autoToggle");
+const dateLabel  = document.getElementById("dateLabel");
+
+// =============================================================
+// UI HELPERS
+// =============================================================
+function fmtPrice(p){
+  if(p >= 1000) return p.toLocaleString("en-US", {maximumFractionDigits:2});
+  if(p >= 1)    return p.toFixed(4);
+  if(p >= 0.01) return p.toFixed(6);
+  return p.toFixed(8);
+}
+function fmtTime(){
+  const d = new Date();
+  return d.toLocaleTimeString("nl-NL", {hour:"2-digit", minute:"2-digit"});
+}
+function todayLabel(){
+  const d = new Date();
+  return d.toLocaleDateString("nl-NL", {weekday:"long", day:"numeric", month:"long"});
+}
+dateLabel.textContent = todayLabel();
+
+function addSystem(text){
+  const el = document.createElement("div");
+  el.className = "system-msg";
+  el.textContent = text;
+  chat.appendChild(el);
+  chat.scrollTop = chat.scrollHeight;
+  return el;
+}
+
+function addTyping(){
+  const el = document.createElement("div");
+  el.className = "typing";
+  el.innerHTML = "<span></span><span></span><span></span>";
+  chat.appendChild(el);
+  chat.scrollTop = chat.scrollHeight;
+  return el;
+}
+
+function renderSignal(sig){
+  const dirLow = sig.direction.toLowerCase();
+  const base   = sig.symbol.replace(/USDT$/, "");
+  const tvUrl  = `https://www.tradingview.com/chart/?symbol=BINANCE:${sig.symbol}&interval=15`;
+  const altrady= `altrady://main/trade?exchange=BINA&base=${base}&quote=USDT`;
+
+  const stopRefStr = sig.stopRef ? fmtPrice(sig.stopRef) : "—";
+  const targetStr  = sig.target  ? fmtPrice(sig.target)  : "—";
+
+  const msg = document.createElement("div");
+  msg.className = `msg ${dirLow}`;
+  msg.innerHTML = `
+    <div class="msg-head">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+        <span class="direction-badge ${dirLow}">${sig.direction === "LONG" ? "▲ Long" : "▼ Short"}</span>
+        <span class="symbol-name">${base}<span style="color:var(--text-muted);font-weight:500;">/USDT</span></span>
+      </div>
+      <span class="score-chip">${sig.score}/5</span>
+    </div>
+    <div class="msg-stats">
+      <div class="stat">
+        <div class="stat-label">Prijs</div>
+        <div class="stat-value mono">${fmtPrice(sig.price)}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">24h Volume</div>
+        <div class="stat-value mono">$${(sig.volume/1e6).toFixed(1)}M</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">FVG Zone (entry)</div>
+        <div class="stat-value mono">${fmtPrice(sig.fvgBottom)} – ${fmtPrice(sig.fvgTop)}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Displacement</div>
+        <div class="stat-value">${sig.dispAge} bars geleden</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Stop ref · ${sig.direction === "LONG" ? "Swing Low" : "Swing High"}</div>
+        <div class="stat-value mono">${stopRefStr}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Target magnet · ${sig.direction === "LONG" ? "EQH" : "EQL"}</div>
+        <div class="stat-value mono">${targetStr}</div>
+      </div>
+    </div>
+    <div class="checks">
+      <span class="check active">Displacement</span>
+      <span class="check active">FVG</span>
+      <span class="check active">Bias</span>
+      <span class="check active">In retrace</span>
+      <span class="check ${sig.inLiquidityBox ? 'active' : ''}">Liquidity box</span>
+    </div>
+    <div class="msg-time">${fmtTime()}</div>
+    <div class="msg-actions">
+      <a class="action-btn" href="${tvUrl}" target="_blank" rel="noopener">
+        <span class="ico">📊</span> TradingView
+      </a>
+      <a class="action-btn" href="${altrady}">
+        <span class="ico">⚡</span> Altrady
+      </a>
+    </div>
+  `;
+  chat.appendChild(msg);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// =============================================================
+// SAC-2 LOGICA
+// =============================================================
+function wilderATR(highs, lows, closes, period=14){
+  if(highs.length < period + 1) return null;
+  const trs = [];
+  for(let i = 1; i < highs.length; i++){
+    const tr = Math.max(
+      highs[i] - lows[i],
+      Math.abs(highs[i] - closes[i-1]),
+      Math.abs(lows[i]  - closes[i-1])
+    );
+    trs.push(tr);
+  }
+  if(trs.length < period) return null;
+  let atr = trs.slice(0, period).reduce((a,b)=>a+b, 0) / period;
+  for(let i = period; i < trs.length; i++){
+    atr = (atr * (period - 1) + trs[i]) / period;
+  }
+  return atr;
+}
+
+// Detecteer swing highs/lows met N candles links/rechts
+function detectSwings(highs, lows, lookback){
+  const sh = [], sl = [];
+  for(let i = lookback; i < highs.length - lookback; i++){
+    let isH = true, isL = true;
+    for(let k = 1; k <= lookback; k++){
+      if(highs[i] <= highs[i-k] || highs[i] <= highs[i+k]) isH = false;
+      if(lows[i]  >= lows[i-k]  || lows[i]  >= lows[i+k])  isL = false;
+    }
+    if(isH) sh.push({ idx: i, value: highs[i] });
+    if(isL) sl.push({ idx: i, value: lows[i] });
+  }
+  return { sh, sl };
+}
+
+// EQH/EQL detectie tussen opeenvolgende swings (zoals Pine doet)
+function findEqualLevels(swings, pctTol){
+  const out = [];
+  for(let i = 1; i < swings.length; i++){
+    const a = swings[i-1].value, b = swings[i].value;
+    const diffPct = Math.abs(a - b) / Math.min(a, b) * 100;
+    if(diffPct <= pctTol){
+      out.push({ level: (a + b) / 2 });
+    }
+  }
+  return out;
+}
+
+function analyze(symbol, volume, klines){
+  if(!klines || klines.length < params.domLookback + 10) return null;
+
+  // Drop ongoing bar if not closed yet
+  const nowMs = Date.now();
+  if(klines[klines.length - 1][6] > nowMs) klines = klines.slice(0, -1);
+  if(klines.length < params.domLookback + 6) return null;
+
+  const opens  = klines.map(k => +k[1]);
+  const highs  = klines.map(k => +k[2]);
+  const lows   = klines.map(k => +k[3]);
+  const closes = klines.map(k => +k[4]);
+  const n = closes.length;
+  const last = n - 1;
+
+  const atr = wilderATR(highs, lows, closes, ATR_PERIOD);
+  if(!atr) return null;
+
+  // Displacement
+  const bullDisp = new Array(n).fill(false);
+  const bearDisp = new Array(n).fill(false);
+  for(let i = 1; i < n; i++){
+    const body = Math.abs(closes[i] - opens[i]);
+    if(body > params.atrMult * atr){
+      if(closes[i] > opens[i] && closes[i] > highs[i-1]) bullDisp[i] = true;
+      if(closes[i] < opens[i] && closes[i] < lows[i-1])  bearDisp[i] = true;
+    }
+  }
+
+  let bullDispIdx = null, bearDispIdx = null;
+  for(let k = 0; k <= DISP_LOOKBACK; k++){
+    const idx = last - k;
+    if(idx < 0) break;
+    if(bullDisp[idx] && bullDispIdx === null) bullDispIdx = idx;
+    if(bearDisp[idx] && bearDispIdx === null) bearDispIdx = idx;
+  }
+
+  // FVG
+  const bullFvgs = [], bearFvgs = [];
+  for(let i = 2; i < n; i++){
+    if(lows[i]  > highs[i-2] && (lows[i] - highs[i-2]) >= FVG_ATR_FACTOR * atr){
+      bullFvgs.push({ top: lows[i],  bottom: highs[i-2], idx: i });
+    }
+    if(highs[i] < lows[i-2]  && (lows[i-2] - highs[i]) >= FVG_ATR_FACTOR * atr){
+      bearFvgs.push({ top: lows[i-2], bottom: highs[i],  idx: i });
+    }
+  }
+
+  // Equilibrium / DOM
+  const recentHighs = highs.slice(-params.domLookback);
+  const recentLows  = lows.slice(-params.domLookback);
+  const domHigh    = Math.max(...recentHighs);
+  const domLow     = Math.min(...recentLows);
+  const equilibrium = (domHigh + domLow) / 2;
+  const current    = closes[last];
+  const aboveEq    = current > equilibrium;
+
+  const inBullBox = lows[last]  <= domLow  * 1.015;
+  const inBearBox = highs[last] >= domHigh * 0.985;
+
+  // Swings + EQH/EQL — voor stop-ref en target-magnet
+  const swings = detectSwings(highs, lows, params.swingLookback);
+  const eqhs   = findEqualLevels(swings.sh, params.eqhEqlPct);
+  const eqls   = findEqualLevels(swings.sl, params.eqhEqlPct);
+
+  // LONG
+  if(bullDispIdx !== null && aboveEq){
+    let related = null;
+    for(let i = bullFvgs.length - 1; i >= 0; i--){
+      const f = bullFvgs[i];
+      if((Math.abs(f.idx - bullDispIdx) <= 2 || f.idx >= bullDispIdx) && (last - f.idx) <= FVG_LOOKBACK + 2){
+        related = f; break;
+      }
+    }
+    if(related){
+      const tolerance = related.top * RETRACE_BUFFER;
+      const inRetrace = lows[last] <= (related.top + tolerance);
+      if(inRetrace){
+        // Stop-ref: hoogste swing low BENEDEN huidige prijs
+        const slBelow = swings.sl.filter(s => s.value < current).map(s => s.value);
+        const stopRef = slBelow.length ? Math.max(...slBelow) : null;
+        // Target magnet: laagste EQH BOVEN huidige prijs
+        const eqhAbove = eqhs.filter(e => e.level > current).map(e => e.level);
+        const target   = eqhAbove.length ? Math.min(...eqhAbove) : null;
+
+        return {
+          symbol, volume,
+          direction: "LONG",
+          price: current,
+          score: 4 + (inBullBox ? 1 : 0),
+          dispAge: last - bullDispIdx,
+          fvgTop: related.top,
+          fvgBottom: related.bottom,
+          inLiquidityBox: inBullBox,
+          stopRef, target,
+          domHigh, domLow, equilibrium,
+        };
+      }
+    }
+  }
+
+  // SHORT
+  if(bearDispIdx !== null && !aboveEq){
+    let related = null;
+    for(let i = bearFvgs.length - 1; i >= 0; i--){
+      const f = bearFvgs[i];
+      if((Math.abs(f.idx - bearDispIdx) <= 2 || f.idx >= bearDispIdx) && (last - f.idx) <= FVG_LOOKBACK + 2){
+        related = f; break;
+      }
+    }
+    if(related){
+      const tolerance = related.bottom * RETRACE_BUFFER;
+      const inRetrace = highs[last] >= (related.bottom - tolerance);
+      if(inRetrace){
+        // Stop-ref: laagste swing high BOVEN huidige prijs
+        const shAbove = swings.sh.filter(s => s.value > current).map(s => s.value);
+        const stopRef = shAbove.length ? Math.min(...shAbove) : null;
+        // Target magnet: hoogste EQL BENEDEN huidige prijs
+        const eqlBelow = eqls.filter(e => e.level < current).map(e => e.level);
+        const target   = eqlBelow.length ? Math.max(...eqlBelow) : null;
+
+        return {
+          symbol, volume,
+          direction: "SHORT",
+          price: current,
+          score: 4 + (inBearBox ? 1 : 0),
+          dispAge: last - bearDispIdx,
+          fvgTop: related.top,
+          fvgBottom: related.bottom,
+          inLiquidityBox: inBearBox,
+          stopRef, target,
+          domHigh, domLow, equilibrium,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+// =============================================================
+// API
+// =============================================================
+async function fetchPairs(){
+  // 1) Haal exchangeInfo op — dit is de bron van waarheid voor welke pairs
+  //    nu actief in Spot trading zijn (filtert delisted/halted/futures-only pairs).
+  const infoResp = await fetch(`${BINANCE_API}/exchangeInfo`);
+  const infoData = await infoResp.json();
+
+  const validSpotSymbols = new Set();
+  for(const s of infoData.symbols){
+    if(s.quoteAsset !== "USDT")                       continue;
+    if(s.status !== "TRADING")                        continue;
+    if(!s.isSpotTradingAllowed)                       continue;
+    if(EXCLUDED_SUFFIXES.some(suf => s.symbol.endsWith(suf))) continue;
+    if(EXCLUDED_BASES.has(s.baseAsset))               continue;
+    validSpotSymbols.add(s.symbol);
+  }
+
+  // 2) Haal 24h ticker op voor volume info
+  const tickerResp = await fetch(`${BINANCE_API}/ticker/24hr`);
+  const tickers    = await tickerResp.json();
+
+  // 3) Filter: alleen pairs die ÉN actief spot ÉN voldoende volume hebben
+  const candidates = [];
+  for(const t of tickers){
+    if(!validSpotSymbols.has(t.symbol)) continue;
+    const qVol = parseFloat(t.quoteVolume) || 0;
+    if(qVol < MIN_VOLUME_USDT)          continue;
+    candidates.push({ symbol: t.symbol, volume: qVol });
+  }
+  candidates.sort((a,b) => b.volume - a.volume);
+  return candidates;
+}
+
+async function fetchKlines(symbol){
+  try{
+    const url = `${BINANCE_API}/klines?symbol=${symbol}&interval=${TIMEFRAME}&limit=${CANDLES}`;
+    const resp = await fetch(url);
+    if(!resp.ok) return null;
+    return await resp.json();
+  }catch{
+    return null;
+  }
+}
+
+// Promise pool for concurrency control
+async function runPool(items, worker, concurrency, onProgress){
+  const results = [];
+  let i = 0, done = 0;
+  async function run(){
+    while(i < items.length){
+      const idx = i++;
+      const item = items[idx];
+      const out = await worker(item);
+      results.push(out);
+      done++;
+      if(onProgress) onProgress(done, items.length);
+    }
+  }
+  await Promise.all(Array.from({length: concurrency}, run));
+  return results;
+}
+
+// =============================================================
+// SCAN ORCHESTRATION
+// =============================================================
+let scanning = false;
+
+async function runScan(){
+  if(scanning) return;
+  scanning = true;
+  scanBtn.disabled    = true;
+  refreshBtn.classList.add("spinning");
+  avatar.classList.add("scanning");
+  status.textContent  = "pairs ophalen…";
+  status.classList.remove("live");
+
+  // Wis vorige scan-resultaten (signalen + system messages) — behoud welcome + datelabel
+  chat.querySelectorAll(".msg, .typing").forEach(el => el.remove());
+  chat.querySelectorAll(".system-msg").forEach(el => {
+    if(el.id !== "dateLabel") el.remove();
+  });
+
+  let typing = addTyping();
+
+  try{
+    const pairs = await fetchPairs();
+    typing.remove();
+    addSystem(`${pairs.length} pairs gevonden met 24h volume ≥ $1M`);
+    typing = addTyping();
+    status.textContent = `scannen 0/${pairs.length}…`;
+
+    const signals = [];
+    await runPool(pairs, async (p) => {
+      const klines = await fetchKlines(p.symbol);
+      const sig    = analyze(p.symbol, p.volume, klines);
+      if(sig) signals.push(sig);
+      return sig;
+    }, CONCURRENCY, (done, total) => {
+      status.textContent = `scannen ${done}/${total}…`;
+    });
+
+    typing.remove();
+
+    // Bepaal welke signalen NIEUW zijn (niet in vorige scan)
+    const currentKeys = new Set(signals.map(s => `${s.symbol}-${s.direction}`));
+    const newSignals  = signals.filter(s => !previousSignalKeys.has(`${s.symbol}-${s.direction}`));
+
+    if(signals.length === 0){
+      addSystem(`Klaar · geen pairs voldoen aan alle criteria · ${fmtTime()}`);
+    }else{
+      // Sort: longs first (score desc), then shorts (score desc)
+      signals.sort((a,b) => {
+        if(a.direction !== b.direction) return a.direction === "LONG" ? -1 : 1;
+        return b.score - a.score;
+      });
+      addSystem(`${signals.length} ${signals.length === 1 ? "signaal" : "signalen"} gevonden · ${fmtTime()}`);
+      signals.forEach(renderSignal);
+
+      // Push alleen nieuwe signalen naar Telegram
+      if(newSignals.length > 0 && tgSettings.enabled && tgSettings.token && tgSettings.chatId){
+        let sent = 0;
+        for(const sig of newSignals){
+          const ok = await notifyTelegram(sig);
+          if(ok) sent++;
+        }
+        if(sent > 0){
+          addSystem(`✈️ ${sent} nieuw${sent === 1 ? "" : "e"} signaal naar Telegram gepusht`);
+        }
+      }
+    }
+
+    previousSignalKeys = currentKeys;
+
+    status.textContent = `Binance Spot · 15m · laatste scan ${fmtTime()}`;
+    status.classList.add("live");
+
+  }catch(err){
+    typing && typing.remove();
+    console.error(err);
+    addSystem(`⚠ Fout: ${err.message || err}`);
+    status.textContent = "Binance Spot · 15m · fout";
+  }finally{
+    scanning = false;
+    scanBtn.disabled = false;
+    refreshBtn.classList.remove("spinning");
+    avatar.classList.remove("scanning");
+  }
+}
+
+// =============================================================
+// AUTO-MODE: scan elke 15m candle close
+// =============================================================
+let autoTimer = null;
+function msUntilNext15mClose(){
+  const now = Date.now();
+  const next = (Math.floor(now / 900000) + 1) * 900000 + 5000;  // +5s buffer
+  return next - now;
+}
+function scheduleAuto(){
+  if(autoTimer) clearTimeout(autoTimer);
+  const ms = msUntilNext15mClose();
+  const t  = new Date(Date.now() + ms).toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  addSystem(`Auto-scan ingeschakeld · volgende om ${t}`);
+  autoTimer = setTimeout(async () => {
+    await runScan();
+    if(autoToggle.checked) scheduleAuto();
+  }, ms);
+}
+
+autoToggle.addEventListener("change", () => {
+  if(autoToggle.checked){
+    scheduleAuto();
+  }else{
+    if(autoTimer){ clearTimeout(autoTimer); autoTimer = null; }
+    addSystem("Auto-scan uitgeschakeld");
+  }
+});
+
+// =============================================================
+// TELEGRAM
+// =============================================================
+const tgSettings = {
+  token:   localStorage.getItem("tgToken")   || "",
+  chatId:  localStorage.getItem("tgChatId")  || "",
+  enabled: localStorage.getItem("tgEnabled") === "true",
+};
+
+const settingsBtn   = document.getElementById("settingsBtn");
+const settingsModal = document.getElementById("settingsModal");
+const closeModalBtn = document.getElementById("closeModal");
+const botTokenInput = document.getElementById("botToken");
+const chatIdInput   = document.getElementById("chatId");
+const tgEnabledInput= document.getElementById("tgEnabled");
+const tgStatusEl    = document.getElementById("tgStatus");
+const tgStatusText  = document.getElementById("tgStatusText");
+const testTgBtn     = document.getElementById("testTg");
+const saveTgBtn     = document.getElementById("saveTg");
+
+// Parameter inputs
+const pSwing   = document.getElementById("pSwing");
+const pDom     = document.getElementById("pDom");
+const pEq      = document.getElementById("pEq");
+const pAtr     = document.getElementById("pAtr");
+const resetBtn = document.getElementById("resetParams");
+
+function loadParamFields(){
+  pSwing.value = params.swingLookback;
+  pDom.value   = params.domLookback;
+  pEq.value    = params.eqhEqlPct;
+  pAtr.value   = params.atrMult;
+}
+function clampNum(v, min, max, def){
+  const n = parseFloat(v);
+  if(isNaN(n)) return def;
+  return Math.min(max, Math.max(min, n));
+}
+function readParamFields(){
+  return {
+    swingLookback: clampNum(pSwing.value, 1,   5,   DEFAULT_PARAMS.swingLookback),
+    domLookback:   clampNum(pDom.value,   20,  500, DEFAULT_PARAMS.domLookback),
+    eqhEqlPct:     clampNum(pEq.value,    0.05,1,   DEFAULT_PARAMS.eqhEqlPct),
+    atrMult:       clampNum(pAtr.value,   1,   3,   DEFAULT_PARAMS.atrMult),
+  };
+}
+
+resetBtn.addEventListener("click", () => {
+  pSwing.value = DEFAULT_PARAMS.swingLookback;
+  pDom.value   = DEFAULT_PARAMS.domLookback;
+  pEq.value    = DEFAULT_PARAMS.eqhEqlPct;
+  pAtr.value   = DEFAULT_PARAMS.atrMult;
+});
+
+// Set deduplicatie: alleen NIEUWE signalen pushen
+let previousSignalKeys = new Set();
+
+function refreshTgStatus(){
+  const configured = !!(tgSettings.token && tgSettings.chatId);
+  const active     = configured && tgSettings.enabled;
+
+  if(active){
+    tgStatusEl.classList.add("connected");
+    tgStatusText.textContent = "Verbonden · pushmeldingen actief";
+    settingsBtn.classList.add("tg-on");
+  } else if(configured){
+    tgStatusEl.classList.remove("connected");
+    tgStatusText.textContent = "Geconfigureerd · uitgeschakeld";
+    settingsBtn.classList.remove("tg-on");
+  } else {
+    tgStatusEl.classList.remove("connected");
+    tgStatusText.textContent = "Niet geconfigureerd";
+    settingsBtn.classList.remove("tg-on");
+  }
+}
+
+function loadTgFields(){
+  botTokenInput.value    = tgSettings.token;
+  chatIdInput.value      = tgSettings.chatId;
+  tgEnabledInput.checked = tgSettings.enabled;
+  loadParamFields();
+  refreshTgStatus();
+}
+
+settingsBtn.addEventListener("click", () => {
+  loadTgFields();
+  settingsModal.classList.add("open");
+});
+closeModalBtn.addEventListener("click", () => settingsModal.classList.remove("open"));
+settingsModal.addEventListener("click", e => {
+  if(e.target === settingsModal) settingsModal.classList.remove("open");
+});
+
+saveTgBtn.addEventListener("click", () => {
+  // Telegram settings
+  tgSettings.token   = botTokenInput.value.trim();
+  tgSettings.chatId  = chatIdInput.value.trim();
+  tgSettings.enabled = tgEnabledInput.checked;
+  localStorage.setItem("tgToken",   tgSettings.token);
+  localStorage.setItem("tgChatId",  tgSettings.chatId);
+  localStorage.setItem("tgEnabled", tgSettings.enabled ? "true" : "false");
+
+  // SAC-2 parameters
+  const newParams = readParamFields();
+  const paramsChanged =
+    newParams.swingLookback !== params.swingLookback ||
+    newParams.domLookback   !== params.domLookback   ||
+    newParams.eqhEqlPct     !== params.eqhEqlPct     ||
+    newParams.atrMult       !== params.atrMult;
+
+  Object.assign(params, newParams);
+  localStorage.setItem("sac_swingLookback", params.swingLookback);
+  localStorage.setItem("sac_domLookback",   params.domLookback);
+  localStorage.setItem("sac_eqhEqlPct",     params.eqhEqlPct);
+  localStorage.setItem("sac_atrMult",       params.atrMult);
+
+  refreshTgStatus();
+  settingsModal.classList.remove("open");
+
+  if(paramsChanged){
+    previousSignalKeys = new Set();  // reset dedup, oude signalen zijn niet meer vergelijkbaar
+    addSystem(`⚙️ Parameters bijgewerkt · swing ${params.swingLookback} · DOM ${params.domLookback} · EQ ${params.eqhEqlPct}% · ATR ${params.atrMult}×`);
+  } else if(tgSettings.enabled && tgSettings.token && tgSettings.chatId){
+    addSystem("✈️ Telegram pushmeldingen ingeschakeld");
+  } else {
+    addSystem("Instellingen opgeslagen");
+  }
+});
+
+async function sendTelegramRaw(token, chatId, text, inlineKeyboard){
+  const url  = `https://api.telegram.org/bot${token}/sendMessage`;
+  const body = {
+    chat_id: chatId,
+    text: text,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+  };
+  if(inlineKeyboard) body.reply_markup = { inline_keyboard: inlineKeyboard };
+
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await resp.json();
+  if(!data.ok) throw new Error(data.description || "Telegram API fout");
+  return data;
+}
+
+testTgBtn.addEventListener("click", async () => {
+  const token  = botTokenInput.value.trim();
+  const chatId = chatIdInput.value.trim();
+  if(!token || !chatId){
+    alert("Vul eerst je Bot Token en Chat ID in.");
+    return;
+  }
+  testTgBtn.disabled = true;
+  testTgBtn.textContent = "Verzenden…";
+  try{
+    await sendTelegramRaw(token, chatId,
+      "🤖 <b>SAC-2 Scanner</b>\n\nVerbinding werkt. Vanaf nu krijg je hier elke nieuwe SAC-2 setup binnen.");
+    testTgBtn.textContent = "✓ Verzonden";
+    setTimeout(() => { testTgBtn.textContent = "Test bericht"; testTgBtn.disabled = false; }, 1800);
+  }catch(err){
+    testTgBtn.textContent = "✗ Mislukt";
+    alert("Verzenden mislukt: " + err.message + "\n\nControleer je Bot Token en Chat ID. Vergeet niet eerst /start naar je bot te sturen.");
+    setTimeout(() => { testTgBtn.textContent = "Test bericht"; testTgBtn.disabled = false; }, 2200);
+  }
+});
+
+function formatTelegramMessage(sig){
+  const dir  = sig.direction === "LONG" ? "🟢 <b>LONG</b>" : "🔴 <b>SHORT</b>";
+  const base = sig.symbol.replace(/USDT$/, "");
+  const volM = (sig.volume / 1e6).toFixed(1);
+  const box  = sig.inLiquidityBox ? "\n📍 In liquidity box" : "";
+  const sl   = sig.stopRef ? `\n🛡 Stop ref: <code>${fmtPrice(sig.stopRef)}</code>` : "";
+  const tp   = sig.target  ? `\n🎯 Target magnet: <code>${fmtPrice(sig.target)}</code> (${sig.direction === "LONG" ? "EQH" : "EQL"})` : "";
+
+  return (
+    `${dir} · <b>${base}/USDT</b>\n` +
+    `Score: <b>${sig.score}/5</b> · 24h vol: $${volM}M\n` +
+    `\n` +
+    `💵 Prijs: <code>${fmtPrice(sig.price)}</code>\n` +
+    `📦 FVG entry: <code>${fmtPrice(sig.fvgBottom)} – ${fmtPrice(sig.fvgTop)}</code>\n` +
+    `⚡ Displacement: ${sig.dispAge} bars geleden${box}${sl}${tp}\n` +
+    `\n` +
+    `<i>Open in Altrady:</i>\n` +
+    `<code>altrady://main/trade?exchange=BINA&amp;base=${base}&amp;quote=USDT</code>`
+  );
+}
+
+async function notifyTelegram(sig){
+  if(!tgSettings.enabled || !tgSettings.token || !tgSettings.chatId) return false;
+  const text   = formatTelegramMessage(sig);
+  const tvUrl  = `https://www.tradingview.com/chart/?symbol=BINANCE:${sig.symbol}&interval=15`;
+  const keyboard = [[
+    { text: "📊 Open in TradingView", url: tvUrl }
+  ]];
+  try{
+    await sendTelegramRaw(tgSettings.token, tgSettings.chatId, text, keyboard);
+    return true;
+  }catch(err){
+    console.error("Telegram send failed for", sig.symbol, err);
+    return false;
+  }
+}
+
+loadTgFields();
+
+// =============================================================
+// BIND
+// =============================================================
+scanBtn.addEventListener("click", runScan);
+refreshBtn.addEventListener("click", runScan);
+
+</script>
+</body>
+</html>
