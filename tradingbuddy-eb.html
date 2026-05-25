@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradingBuddy EB — Binance USDT Scanner</title>
+<meta name="description" content="Real-time scanner voor FVG, OB, BOSS en FIB signalen op Binance Spot en Futures USDT paren.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🤖%3C/text%3E%3C/svg%3E">
+
+<!-- React + Babel via CDN -->
+<script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #050510;
+    color: #fff;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  #root { min-height: 100vh; }
+  button { font-family: inherit; }
+  input, select { font-family: inherit; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.3); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(139,92,246,0.5); }
+  @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  @keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes glow { 0%,100% { box-shadow: 0 0 12px rgba(139,92,246,0.3); } 50% { box-shadow: 0 0 24px rgba(139,92,246,0.6); } }
+  @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .fade-in { animation: fade-in 0.2s ease; }
+  input::placeholder { color: rgba(255,255,255,0.3); }
+  button:hover:not(:disabled) { filter: brightness(1.15); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  input[type="range"] { accent-color: #8b5cf6; }
+
+  /* Bootloader */
+  #boot {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 16px;
+    background: radial-gradient(ellipse at top, #1a0b2e 0%, #0a0a14 50%, #050510 100%);
+    color: #a78bfa;
+    z-index: 9999;
+  }
+  #boot .ring {
+    width: 48px; height: 48px;
+    border: 3px solid rgba(139,92,246,0.2);
+    border-top-color: #8b5cf6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  #boot.hidden { display: none; }
+
+  /* Mobile */
+  .mobile-only { display: none; }
+  @media (max-width: 900px) {
+    .desktop-left { display: none !important; }
+    .desktop-right { display: none !important; }
+    .mobile-only { display: flex !important; }
+    .main-grid { grid-template-columns: 1fr !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="boot">
+  <div class="ring"></div>
+  <div style="font-size:14px;font-weight:600;letter-spacing:0.5px;">TradingBuddy EB laden…</div>
+</div>
+
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+// ============================================================
+// ICONS (inline SVG, lucide-style)
+// ============================================================
+function Icon({ name, size = 18, color, style, ...rest }) {
+  const paths = ICONS[name];
+  if (!paths) return null;
+  return (
+    <svg
+      width={size} height={size} viewBox="0 0 24 24"
+      fill="none" stroke={color || 'currentColor'} strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round"
+      style={{ flexShrink: 0, ...style }}
+      {...rest}
+    >
+      {paths}
+    </svg>
+  );
+}
+
+const ICONS = {
+  home: <><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>,
+  activity: <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>,
+  zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>,
+  search: <><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>,
+  star: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>,
+  trending: <><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></>,
+  newspaper: <><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2 2 2 0 0 1-2-2V11a2 2 0 0 1 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></>,
+  settings: <><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></>,
+  bars: <><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></>,
+  file: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></>,
+  target: <><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></>,
+  pin: <><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></>,
+  calendar: <><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></>,
+  menu: <><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></>,
+  refresh: <><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></>,
+  chev_r: <polyline points="9 18 15 12 9 6"/>,
+  chev_l: <polyline points="15 18 9 12 15 6"/>,
+  chev_d: <polyline points="6 9 12 15 18 9"/>,
+  x: <><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></>,
+  eye: <><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></>,
+  warn: <><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></>,
+  rocket: <><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></>,
+  github: <><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.4 5.4 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></>,
+  graduation: <><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></>,
+  btc: <><path d="M11.767 19.089c4.924.868 6.14-6.025 1.216-6.894m-1.216 6.894L5.86 18.047m5.908 1.042-.347 1.97m1.563-8.864c4.924.869 6.14-6.025 1.215-6.893m-1.215 6.893-3.94-.694m5.155-6.2L8.29 4.26m5.908 1.042.348-1.97M7.48 20.364l3.126-17.727"/></>,
+};
+
+// ============================================================
+// CONSTANTS
+// ============================================================
+const SIGNAL_META = {
+  FVG:  { label: 'FVG',  color: '#06b6d4', name: 'Fair Value Gap' },
+  OB:   { label: 'OB',   color: '#f59e0b', name: 'Order Block' },
+  BOSS: { label: 'BOSS', color: '#a855f7', name: 'Break of Structure' },
+  FIB:  { label: 'FIB',  color: '#10b981', name: 'Fibonacci' },
+};
+
+const TIMEFRAMES = [
+  { id: '15m', label: '15m' },
+  { id: '1h',  label: '1h'  },
+  { id: '4h',  label: '4h'  },
+];
+
+const MARKETS = [
+  { id: 'spot',    label: 'Binance Spot'    },
+  { id: 'futures', label: 'Binance Futures' },
+];
+
+const SORT_OPTIONS = [
+  { id: 'newest',   label: 'Nieuwste'   },
+  { id: 'oldest',   label: 'Oudste'     },
+  { id: 'rating',   label: 'Rating'     },
+  { id: 'distance', label: 'Afstand'    },
+  { id: 'volume',   label: '24u Volume' },
+];
+
+const PAIR_OPTIONS = [10, 25, 50, 75, 100, 150, 200];
+
+const BINANCE_SPOT    = 'https://api.binance.com/api/v3';
+const BINANCE_FUTURES = 'https://fapi.binance.com/fapi/v1';
+
+// ============================================================
+// API
+// ============================================================
+async function fetchKlines(symbol, interval, market, limit = 120) {
+  const base = market === 'futures' ? BINANCE_FUTURES : BINANCE_SPOT;
+  const r = await fetch(`${base}/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
+  if (!r.ok) throw new Error('klines fail');
+  const data = await r.json();
+  return data.map(c => ({
+    time: c[0],
+    open: parseFloat(c[1]),
+    high: parseFloat(c[2]),
+    low:  parseFloat(c[3]),
+    close:parseFloat(c[4]),
+    volume: parseFloat(c[5]),
+  }));
+}
+
+async function fetchTopPairs(market, limit = 25) {
+  const base = market === 'futures' ? BINANCE_FUTURES : BINANCE_SPOT;
+  const r = await fetch(`${base}/ticker/24hr`);
+  if (!r.ok) throw new Error('ticker fail');
+  const data = await r.json();
+  return data
+    .filter(t => t.symbol.endsWith('USDT') && !t.symbol.includes('_') && !t.symbol.startsWith('USDC'))
+    .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+    .slice(0, limit)
+    .map(t => ({
+      symbol: t.symbol,
+      price: parseFloat(t.lastPrice),
+      change: parseFloat(t.priceChangePercent),
+      volume: parseFloat(t.quoteVolume),
+    }));
+}
+
+async function fetchFearGreed() {
+  try {
+    const r = await fetch('https://api.alternative.me/fng/?limit=1');
+    const d = await r.json();
+    return parseInt(d.data[0].value, 10);
+  } catch { return null; }
+}
+
+// ============================================================
+// SIGNAL DETECTION
+// ============================================================
+function detectFVG(candles) {
+  const out = [];
+  for (let i = 2; i < candles.length; i++) {
+    const a = candles[i - 2], b = candles[i - 1], c = candles[i];
+    const body = Math.abs(b.close - b.open);
+    const range = b.high - b.low;
+    if (body < range * 0.5) continue;
+    if (a.high < c.low) {
+      const gap = ((c.low - a.high) / a.high) * 100;
+      if (gap > 0.15)
+        out.push({ type: 'FVG', direction: 'LONG', entry: c.low,
+                   zoneTop: c.low, zoneBottom: a.high, index: i,
+                   time: c.time, strength: Math.min(100, gap * 12) });
+    }
+    if (a.low > c.high) {
+      const gap = ((a.low - c.high) / c.high) * 100;
+      if (gap > 0.15)
+        out.push({ type: 'FVG', direction: 'SHORT', entry: c.high,
+                   zoneTop: a.low, zoneBottom: c.high, index: i,
+                   time: c.time, strength: Math.min(100, gap * 12) });
+    }
+  }
+  return out;
+}
+
+function detectOB(candles) {
+  const out = [];
+  for (let i = 1; i < candles.length; i++) {
+    const prev = candles[i - 1], curr = candles[i];
+    const move = ((curr.close - curr.open) / curr.open) * 100;
+    const body = Math.abs(curr.close - curr.open);
+    const range = curr.high - curr.low;
+    if (body < range * 0.6) continue;
+    if (move > 1.5 && prev.close < prev.open) {
+      out.push({ type: 'OB', direction: 'LONG', entry: prev.high,
+                 zoneTop: prev.high, zoneBottom: prev.low, index: i - 1,
+                 time: prev.time, strength: Math.min(100, move * 25) });
+    }
+    if (move < -1.5 && prev.close > prev.open) {
+      out.push({ type: 'OB', direction: 'SHORT', entry: prev.low,
+                 zoneTop: prev.high, zoneBottom: prev.low, index: i - 1,
+                 time: prev.time, strength: Math.min(100, Math.abs(move) * 25) });
+    }
+  }
+  return out;
+}
+
+function detectBOSS(candles) {
+  const out = [];
+  const win = 20;
+  if (candles.length < win + 2) return out;
+  for (let i = win; i < candles.length; i++) {
+    const w = candles.slice(i - win, i);
+    const hi = Math.max(...w.map(c => c.high));
+    const lo = Math.min(...w.map(c => c.low));
+    const c = candles[i];
+    if (c.close > hi)
+      out.push({ type: 'BOSS', direction: 'LONG', entry: hi,
+                 index: i, time: c.time,
+                 strength: Math.min(100, ((c.close - hi) / hi) * 200 + 50) });
+    if (c.close < lo)
+      out.push({ type: 'BOSS', direction: 'SHORT', entry: lo,
+                 index: i, time: c.time,
+                 strength: Math.min(100, ((lo - c.close) / lo) * 200 + 50) });
+  }
+  return out;
+}
+
+function detectFIB(candles) {
+  const out = [];
+  const win = Math.min(60, candles.length);
+  if (win < 20) return out;
+  const w = candles.slice(-win);
+  let hiI = 0, loI = 0;
+  for (let i = 0; i < w.length; i++) {
+    if (w[i].high > w[hiI].high) hiI = i;
+    if (w[i].low  < w[loI].low ) loI = i;
+  }
+  const hi = w[hiI].high, lo = w[loI].low;
+  const last = candles[candles.length - 1];
+  const range = hi - lo;
+  if (range / lo < 0.02) return out;
+  const fibs = [0.382, 0.5, 0.618, 0.786];
+  if (hiI > loI) {
+    for (const f of fibs) {
+      const lvl = hi - range * f;
+      const dist = Math.abs(last.close - lvl) / last.close * 100;
+      if (dist < 1.2) {
+        out.push({ type: 'FIB', direction: 'LONG', entry: lvl,
+                   index: candles.length - 1, time: last.time,
+                   strength: Math.max(40, 100 - dist * 40), fibLevel: f });
+        break;
+      }
+    }
+  } else {
+    for (const f of fibs) {
+      const lvl = lo + range * f;
+      const dist = Math.abs(last.close - lvl) / last.close * 100;
+      if (dist < 1.2) {
+        out.push({ type: 'FIB', direction: 'SHORT', entry: lvl,
+                   index: candles.length - 1, time: last.time,
+                   strength: Math.max(40, 100 - dist * 40), fibLevel: f });
+        break;
+      }
+    }
+  }
+  return out;
+}
+
+function computeRSI(candles, period = 14) {
+  if (candles.length < period + 1) return 50;
+  let gains = 0, losses = 0;
+  for (let i = candles.length - period; i < candles.length; i++) {
+    const d = candles[i].close - candles[i - 1].close;
+    if (d > 0) gains += d; else losses -= d;
+  }
+  const rs = gains / (losses || 1);
+  return 100 - 100 / (1 + rs);
+}
+
+async function scanSymbol(symbol, interval, market) {
+  const candles = await fetchKlines(symbol, interval, market, 120);
+  if (!candles || candles.length < 25) return [];
+  const all = [
+    ...detectFVG(candles),
+    ...detectOB(candles),
+    ...detectBOSS(candles),
+    ...detectFIB(candles),
+  ];
+  const last = candles[candles.length - 1];
+  const recent = all.filter(s => s.index === undefined || s.index >= candles.length - 15);
+  return recent.map(s => ({
+    ...s,
+    id: `${symbol}-${interval}-${market}-${s.type}-${s.direction}-${s.time}`,
+    symbol, interval, market,
+    currentPrice: last.close,
+    distance: ((last.close - s.entry) / s.entry * 100),
+    candles,
+    rsi: computeRSI(candles),
+  }));
+}
+
+// ============================================================
+// FORMAT
+// ============================================================
+const fmtPrice = (p) => {
+  if (p == null || isNaN(p)) return '—';
+  if (p >= 1000) return p.toLocaleString('nl-NL', { maximumFractionDigits: 2 });
+  if (p >= 1)    return p.toFixed(3);
+  if (p >= 0.01) return p.toFixed(4);
+  return p.toFixed(6);
+};
+const fmtPct = (p) => (p >= 0 ? '+' : '') + p.toFixed(2) + '%';
+const fmtTime = (t) => {
+  const d = new Date(t);
+  return d.toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+};
+
+// ============================================================
+// CHART
+// ============================================================
+function CandlestickChart({ candles, signal, height = 220, showZones = true }) {
+  const [hover, setHover] = useState(null);
+  if (!candles || candles.length === 0) return null;
+  const slice = candles.slice(-60);
+  const w = 800, padL = 8, padR = 70, padT = 10, padB = 22;
+  const chartW = w - padL - padR;
+  const chartH = height - padT - padB;
+  const lo = Math.min(...slice.map(c => c.low));
+  const hi = Math.max(...slice.map(c => c.high));
+  const pad = (hi - lo) * 0.08;
+  const yMin = lo - pad, yMax = hi + pad;
+  const yScale = (v) => padT + (1 - (v - yMin) / (yMax - yMin)) * chartH;
+  const candleW = chartW / slice.length;
+  const bodyW = Math.max(1.5, candleW * 0.7);
+  const gridLines = [];
+  for (let i = 0; i <= 4; i++) {
+    const v = yMin + (yMax - yMin) * (i / 4);
+    gridLines.push({ y: yScale(v), v });
+  }
+
+  return (
+    <div style={{ position: 'relative', width: '100%' }}>
+      <svg viewBox={`0 0 ${w} ${height}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+        {gridLines.map((g, i) => (
+          <g key={i}>
+            <line x1={padL} x2={w - padR} y1={g.y} y2={g.y} stroke="rgba(255,255,255,0.05)" strokeDasharray="2 4" />
+            <text x={w - padR + 6} y={g.y + 3} fill="rgba(255,255,255,0.4)" fontSize="9" fontFamily="ui-monospace, monospace">
+              {fmtPrice(g.v)}
+            </text>
+          </g>
+        ))}
+        {showZones && signal && (signal.zoneTop || signal.entry) && (
+          <>
+            {signal.zoneTop && signal.zoneBottom && (
+              <rect
+                x={padL}
+                y={yScale(signal.zoneTop)}
+                width={chartW}
+                height={Math.abs(yScale(signal.zoneBottom) - yScale(signal.zoneTop))}
+                fill={signal.direction === 'LONG' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)'}
+                stroke={signal.direction === 'LONG' ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.4)'}
+                strokeDasharray="3 3"
+              />
+            )}
+            <line
+              x1={padL} x2={w - padR}
+              y1={yScale(signal.entry)} y2={yScale(signal.entry)}
+              stroke={signal.direction === 'LONG' ? '#10b981' : '#ef4444'}
+              strokeWidth="1" strokeDasharray="4 3"
+            />
+            <text
+              x={w - padR - 4} y={yScale(signal.entry) - 3}
+              fill={signal.direction === 'LONG' ? '#10b981' : '#ef4444'}
+              fontSize="10" textAnchor="end" fontWeight="600"
+            >
+              {signal.type} {signal.direction}
+            </text>
+          </>
+        )}
+        {slice.map((c, i) => {
+          const x = padL + i * candleW + candleW / 2;
+          const up = c.close >= c.open;
+          const color = up ? '#22c55e' : '#ef4444';
+          return (
+            <g key={i} onMouseEnter={() => setHover(c)} onMouseLeave={() => setHover(null)}>
+              <line x1={x} x2={x} y1={yScale(c.high)} y2={yScale(c.low)} stroke={color} strokeWidth="1" />
+              <rect
+                x={x - bodyW / 2}
+                y={yScale(Math.max(c.open, c.close))}
+                width={bodyW}
+                height={Math.max(1, Math.abs(yScale(c.open) - yScale(c.close)))}
+                fill={color}
+              />
+            </g>
+          );
+        })}
+      </svg>
+      {hover && (
+        <div style={{
+          position: 'absolute', top: 6, left: 8, padding: '4px 8px',
+          background: 'rgba(10,10,20,0.85)', border: '1px solid rgba(139,92,246,0.3)',
+          borderRadius: 6, fontSize: 10, color: '#fff', fontFamily: 'ui-monospace, monospace',
+          pointerEvents: 'none'
+        }}>
+          O {fmtPrice(hover.open)} · H {fmtPrice(hover.high)} · L {fmtPrice(hover.low)} · C {fmtPrice(hover.close)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// ATOMS
+// ============================================================
+function StatCard({ label, value, valueColor = '#fff', accent, children, info }) {
+  return (
+    <div style={{
+      background: 'rgba(20,20,35,0.6)',
+      border: `1px solid ${accent || 'rgba(139,92,246,0.25)'}`,
+      borderRadius: 12, padding: '10px 14px', minWidth: 110,
+      backdropFilter: 'blur(8px)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'rgba(255,255,255,0.5)', fontSize: 9, letterSpacing: 1, fontWeight: 600 }}>
+        {label}
+        {info && <span style={{ opacity: 0.5 }}>ⓘ</span>}
+      </div>
+      <div style={{ color: valueColor, fontWeight: 700, fontSize: 16, marginTop: 4, fontFamily: 'ui-monospace, monospace' }}>
+        {value}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function ChipButton({ active, onClick, children, color, style }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '6px 10px', borderRadius: 8, border: 'none',
+        background: active ? (color || '#8b5cf6') : 'rgba(255,255,255,0.05)',
+        color: active ? '#fff' : 'rgba(255,255,255,0.7)',
+        fontSize: 11, fontWeight: 700, cursor: 'pointer',
+        letterSpacing: 0.3, transition: 'all 0.15s', ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SidebarItem({ icon, label, active, onClick, collapsed }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+        padding: '10px 12px',
+        background: active ? 'rgba(139,92,246,0.15)' : 'transparent',
+        border: 'none',
+        borderLeft: active ? '2px solid #8b5cf6' : '2px solid transparent',
+        color: active ? '#a78bfa' : 'rgba(255,255,255,0.6)',
+        cursor: 'pointer', borderRadius: 10, fontSize: 13, fontWeight: 500,
+        justifyContent: collapsed ? 'center' : 'flex-start',
+        transition: 'all 0.15s',
+      }}
+    >
+      <Icon name={icon} size={18} />
+      {!collapsed && <span>{label}</span>}
+    </button>
+  );
+}
+
+function SignalCard({ sig, selected, onClick }) {
+  const meta = SIGNAL_META[sig.type];
+  const dirColor = sig.direction === 'LONG' ? '#10b981' : '#ef4444';
+  const absDist = Math.abs(sig.distance);
+  const ratingPct = Math.round(sig.strength);
+
+  return (
+    <div
+      onClick={onClick}
+      className="fade-in"
+      style={{
+        background: selected ? 'rgba(139,92,246,0.08)' : 'rgba(20,20,35,0.5)',
+        border: `1px solid ${selected ? 'rgba(139,92,246,0.5)' : 'rgba(139,92,246,0.15)'}`,
+        borderRadius: 12, padding: 12, cursor: 'pointer',
+        transition: 'all 0.15s', position: 'relative',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        <div style={{
+          background: sig.direction === 'LONG'
+            ? 'linear-gradient(135deg,#10b981,#059669)'
+            : 'linear-gradient(135deg,#ef4444,#b91c1c)',
+          color: '#fff', borderRadius: 8, padding: '4px 6px',
+          fontSize: 10, fontWeight: 800, minWidth: 36, textAlign: 'center',
+          clipPath: 'polygon(0 0, 100% 0, 100% 75%, 50% 100%, 0 75%)',
+          paddingBottom: 10,
+        }}>
+          {Math.min(99, Math.round(absDist))}%
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ color: '#fff', fontWeight: 700, fontSize: 13, fontFamily: 'ui-monospace, monospace' }}>
+              {sig.symbol}
+            </span>
+            <span style={{ background: meta.color, color: '#fff', borderRadius: 5, padding: '1px 6px', fontSize: 9, fontWeight: 800 }}>
+              {meta.label}
+            </span>
+            <span style={{ background: dirColor, color: '#fff', borderRadius: 5, padding: '1px 6px', fontSize: 9, fontWeight: 800 }}>
+              {sig.direction}
+            </span>
+            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, marginLeft: 'auto' }}>
+              {ratingPct}%
+            </span>
+          </div>
+          <div style={{
+            color: 'rgba(255,255,255,0.45)', fontSize: 10, marginTop: 3,
+            background: 'rgba(255,255,255,0.05)', display: 'inline-block',
+            padding: '2px 6px', borderRadius: 4
+          }}>
+            {sig.interval} · Binance {sig.market === 'futures' ? 'Futures' : 'Spot'}
+          </div>
+        </div>
+      </div>
+      <div style={{ marginTop: 8, height: 80, background: 'rgba(0,0,0,0.3)', borderRadius: 6, overflow: 'hidden', position: 'relative' }}>
+        <div style={{ position: 'absolute', top: 4, left: 6, fontSize: 8, color: 'rgba(255,255,255,0.3)', fontFamily: 'ui-monospace, monospace', zIndex: 2 }}>
+          TradingBuddyEB
+        </div>
+        <CandlestickChart candles={sig.candles} signal={sig} height={80} showZones={true} />
+      </div>
+      <div style={{
+        marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        color: 'rgba(255,255,255,0.7)', fontSize: 11,
+      }}>
+        <span>Afstand: <span style={{ color: '#fff', fontWeight: 600 }}>{absDist.toFixed(2)}%</span></span>
+        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontFamily: 'ui-monospace, monospace' }}>
+          @ {fmtPrice(sig.entry)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function DetailStat({ label, value, color = '#fff', mono = false }) {
+  return (
+    <div style={{ background: 'rgba(0,0,0,0.25)', borderRadius: 8, padding: '6px 8px' }}>
+      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5 }}>{label}</div>
+      <div style={{
+        color, fontWeight: 700, fontSize: 13, marginTop: 2,
+        fontFamily: mono ? 'ui-monospace, monospace' : 'inherit',
+      }}>{value}</div>
+    </div>
+  );
+}
+
+function TargetBox({ label, value, color }) {
+  return (
+    <div style={{
+      background: 'rgba(255,255,255,0.03)', border: `1px solid ${color}33`,
+      borderRadius: 6, padding: '5px 6px', textAlign: 'center',
+    }}>
+      <div style={{ fontSize: 9, color: color, fontWeight: 700 }}>{label}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, fontFamily: 'ui-monospace, monospace', marginTop: 1 }}>{value}</div>
+    </div>
+  );
+}
+
+function SignalDetail({ signal, onClose }) {
+  const meta = SIGNAL_META[signal.type];
+  const dirColor = signal.direction === 'LONG' ? '#10b981' : '#ef4444';
+  const absDist = Math.abs(signal.distance);
+  let stop, tp1, tp2, tp3, riskPct;
+  if (signal.direction === 'LONG') {
+    stop = signal.zoneBottom ?? (signal.entry * 0.99);
+    riskPct = (signal.entry - stop) / signal.entry * 100;
+    tp1 = signal.entry + (signal.entry - stop) * 1;
+    tp2 = signal.entry + (signal.entry - stop) * 2;
+    tp3 = signal.entry + (signal.entry - stop) * 3;
+  } else {
+    stop = signal.zoneTop ?? (signal.entry * 1.01);
+    riskPct = (stop - signal.entry) / signal.entry * 100;
+    tp1 = signal.entry - (stop - signal.entry) * 1;
+    tp2 = signal.entry - (stop - signal.entry) * 2;
+    tp3 = signal.entry - (stop - signal.entry) * 3;
+  }
+
+  return (
+    <div className="fade-in">
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
+        <div style={{ background: meta.color, color: '#fff', borderRadius: 8, padding: '4px 8px', fontSize: 11, fontWeight: 800 }}>
+          {meta.label}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 18, fontFamily: 'ui-monospace, monospace' }}>{signal.symbol}</div>
+          <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>
+            {signal.interval} · Binance {signal.market === 'futures' ? 'Futures' : 'Spot'} · {fmtTime(signal.time)}
+          </div>
+        </div>
+        <span style={{ background: dirColor, color: '#fff', padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 800 }}>
+          {signal.direction}
+        </span>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
+          <Icon name="x" size={16} />
+        </button>
+      </div>
+
+      <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: 8, marginBottom: 10 }}>
+        <CandlestickChart candles={signal.candles} signal={signal} height={220} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 10 }}>
+        <DetailStat label="Huidige prijs" value={fmtPrice(signal.currentPrice)} mono />
+        <DetailStat label="Entry" value={fmtPrice(signal.entry)} mono color={dirColor} />
+        <DetailStat label="Afstand" value={absDist.toFixed(2) + '%'} color={absDist < 1 ? '#22c55e' : '#fff'} mono />
+        <DetailStat label="Rating" value={Math.round(signal.strength) + '%'} mono />
+        <DetailStat label="RSI" value={signal.rsi.toFixed(0)} color={signal.rsi > 70 ? '#ef4444' : signal.rsi < 30 ? '#22c55e' : '#fff'} mono />
+        <DetailStat label="Risico" value={riskPct.toFixed(2) + '%'} mono />
+      </div>
+
+      <div style={{
+        background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(139,92,246,0.15)',
+        borderRadius: 10, padding: 10, marginBottom: 8,
+      }}>
+        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: 1, marginBottom: 6 }}>
+          TARGETS (1R / 2R / 3R)
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+          <TargetBox label="Stop" value={fmtPrice(stop)} color="#ef4444" />
+          <TargetBox label="TP1"  value={fmtPrice(tp1)}  color="#10b981" />
+          <TargetBox label="TP2"  value={fmtPrice(tp2)}  color="#10b981" />
+          <TargetBox label="TP3"  value={fmtPrice(tp3)}  color="#10b981" />
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 6 }}>
+        <a
+          href={`https://www.binance.com/${signal.market === 'futures' ? 'en/futures' : 'en/trade'}/${signal.symbol.replace('USDT','_USDT')}`}
+          target="_blank" rel="noopener"
+          style={{
+            flex: 1, padding: '8px 12px', background: 'rgba(245,158,11,0.12)',
+            border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8,
+            color: '#fbbf24', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            textDecoration: 'none',
+          }}
+        >
+          <Icon name="btc" size={12} /> Open op Binance
+        </a>
+        <a
+          href={`https://www.tradingview.com/chart/?symbol=BINANCE:${signal.symbol}.P`}
+          target="_blank" rel="noopener"
+          style={{
+            flex: 1, padding: '8px 12px', background: 'rgba(16,185,129,0.12)',
+            border: '1px solid rgba(16,185,129,0.3)', borderRadius: 8,
+            color: '#10b981', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            textDecoration: 'none',
+          }}
+        >
+          <Icon name="trending" size={12} /> TradingView
+        </a>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// MAIN APP
+// ============================================================
+function TradingBuddyEB() {
+  const [nav, setNav] = useState('signalen');
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(true);
+  const [mobileLeftOpen, setMobileLeftOpen] = useState(false);
+
+  const [signals, setSignals] = useState([]);
+  const [pairs, setPairs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [error, setError] = useState(null);
+  const [lastUpdate, setLastUpdate] = useState(null);
+
+  const [fearGreed, setFearGreed] = useState(null);
+  const [btcChange24h, setBtcChange24h] = useState(0);
+
+  const [enabledTypes, setEnabledTypes] = useState({ FVG: true, OB: true, BOSS: true, FIB: true });
+  const [direction, setDirection] = useState('BOTH');
+  const [timeframes, setTimeframes] = useState({ '15m': false, '1h': true, '4h': true });
+  const [enabledMarkets, setEnabledMarkets] = useState({ spot: true, futures: true });
+  const [maxPairs, setMaxPairs] = useState(50);
+  const [search, setSearch] = useState('');
+  const [minRating, setMinRating] = useState(0);
+  const [sortBy, setSortBy] = useState('newest');
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  const [selectedSignal, setSelectedSignal] = useState(null);
+
+  // Auto-scan timer (in seconds, 0 = off)
+  const [autoScan, setAutoScan] = useState(0);
+  const autoScanRef = useRef(null);
+
+  const scan = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const activeMarkets = Object.entries(enabledMarkets).filter(([_, v]) => v).map(([k]) => k);
+      const activeTfs = Object.entries(timeframes).filter(([_, v]) => v).map(([k]) => k);
+      if (activeMarkets.length === 0 || activeTfs.length === 0) {
+        setSignals([]); setLoading(false); return;
+      }
+      const pairLists = await Promise.all(
+        activeMarkets.map(m => fetchTopPairs(m, maxPairs).then(p => ({ market: m, pairs: p })))
+      );
+      const allPairs = pairLists.flatMap(pl => pl.pairs.map(p => ({ ...p, market: pl.market })));
+      setPairs(allPairs);
+      const btc = allPairs.find(p => p.symbol === 'BTCUSDT');
+      if (btc) setBtcChange24h(btc.change);
+
+      const tasks = [];
+      for (const { market, pairs } of pairLists) {
+        for (const p of pairs) {
+          for (const tf of activeTfs) tasks.push({ symbol: p.symbol, interval: tf, market });
+        }
+      }
+      setProgress({ done: 0, total: tasks.length });
+
+      const found = [];
+      // Lower concurrency for larger scans to avoid rate limits
+      const CONC = tasks.length > 300 ? 4 : tasks.length > 150 ? 6 : 8;
+      let idx = 0;
+      const runNext = async () => {
+        while (idx < tasks.length) {
+          const my = idx++;
+          const t = tasks[my];
+          try {
+            const sigs = await scanSymbol(t.symbol, t.interval, t.market);
+            found.push(...sigs);
+          } catch {}
+          setProgress({ done: my + 1, total: tasks.length });
+        }
+      };
+      await Promise.all(Array.from({ length: CONC }, runNext));
+      setSignals(found);
+      setLastUpdate(new Date());
+    } catch (e) {
+      setError(e.message || 'Onbekende fout bij scannen');
+    } finally {
+      setLoading(false);
+    }
+  }, [enabledMarkets, timeframes, maxPairs]);
+
+  // Initial load
+  useEffect(() => {
+    fetchFearGreed().then(setFearGreed);
+    scan();
+  }, []);
+
+  // Auto-scan
+  useEffect(() => {
+    if (autoScanRef.current) clearInterval(autoScanRef.current);
+    if (autoScan > 0) {
+      autoScanRef.current = setInterval(() => {
+        if (!loading) scan();
+      }, autoScan * 1000);
+    }
+    return () => { if (autoScanRef.current) clearInterval(autoScanRef.current); };
+  }, [autoScan, scan, loading]);
+
+  const filteredSignals = useMemo(() => {
+    let f = signals.filter(s => {
+      if (!enabledTypes[s.type]) return false;
+      if (direction !== 'BOTH' && s.direction !== direction) return false;
+      if (search && !s.symbol.toLowerCase().includes(search.toLowerCase())) return false;
+      if (s.strength < minRating) return false;
+      return true;
+    });
+    switch (sortBy) {
+      case 'newest':   f.sort((a, b) => b.time - a.time); break;
+      case 'oldest':   f.sort((a, b) => a.time - b.time); break;
+      case 'rating':   f.sort((a, b) => b.strength - a.strength); break;
+      case 'distance': f.sort((a, b) => Math.abs(a.distance) - Math.abs(b.distance)); break;
+      case 'volume': {
+        const vmap = Object.fromEntries(pairs.map(p => [p.symbol + ':' + p.market, p.volume]));
+        f.sort((a, b) => (vmap[b.symbol + ':' + b.market] || 0) - (vmap[a.symbol + ':' + a.market] || 0));
+        break;
+      }
+    }
+    return f;
+  }, [signals, enabledTypes, direction, search, minRating, sortBy, pairs]);
+
+  const counts = useMemo(() => {
+    const c = { FVG: 0, OB: 0, BOSS: 0, FIB: 0 };
+    for (const s of signals) c[s.type]++;
+    return c;
+  }, [signals]);
+
+  const barometer = useMemo(() => {
+    if (signals.length === 0) return 2;
+    const longs = signals.filter(s => s.direction === 'LONG').length;
+    return Math.round((longs / signals.length) * 5);
+  }, [signals]);
+
+  const dayBias = btcChange24h >= 0 ? 'LONG' : 'SHORT';
+  const dayBiasPct = Math.min(100, Math.abs(btcChange24h) * 10);
+
+  const NAV_ITEMS = [
+    { id: 'home',         icon: 'home',       label: 'Home'         },
+    { id: 'markt',        icon: 'activity',   label: 'Markt'        },
+    { id: 'signalen',     icon: 'zap',        label: 'Signalen'     },
+    { id: 'analyseer',    icon: 'search',     label: 'Analyseer'    },
+    { id: 'watchlist',    icon: 'star',       label: 'Watchlist'    },
+    { id: 'papertrade',   icon: 'trending',   label: 'Papertrade'   },
+    { id: 'nieuws',       icon: 'newspaper',  label: 'Nieuws'       },
+    { id: 'instellingen', icon: 'settings',   label: 'Instellingen' },
+  ];
+  const RIGHT_ICONS = [
+    { id: 'stats',    icon: 'bars',     label: 'Statistieken' },
+    { id: 'briefing', icon: 'file',     label: 'Briefing'     },
+    { id: 'btc',      icon: 'btc',      label: 'Bitcoin'      },
+    { id: 'scenario', icon: 'target',   label: "Scenario's"   },
+    { id: 'levels',   icon: 'pin',      label: 'Levels'       },
+    { id: 'kalender', icon: 'calendar', label: 'Kalender'     },
+  ];
+
+  // Rate limit warning for high pair counts
+  const totalCalls = maxPairs * Object.values(enabledMarkets).filter(Boolean).length * Object.values(timeframes).filter(Boolean).length;
+  const rateLimitWarn = totalCalls > 400;
+
+  return (
+    <div style={{
+      background: 'radial-gradient(ellipse at top, #1a0b2e 0%, #0a0a14 50%, #050510 100%)',
+      color: '#fff', minHeight: '100vh', width: '100%', position: 'relative',
+    }}>
+      {/* HEADER */}
+      <header style={{
+        position: 'sticky', top: 0, zIndex: 50,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '14px 20px', borderBottom: '1px solid rgba(139,92,246,0.15)',
+        background: 'rgba(10,10,20,0.85)', backdropFilter: 'blur(12px)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button className="mobile-only" onClick={() => setMobileLeftOpen(true)}
+            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', display: 'none' }}>
+            <Icon name="menu" size={22} />
+          </button>
+          <div style={{
+            width: 32, height: 32, borderRadius: 10,
+            background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)',
+            display: 'grid', placeItems: 'center', fontSize: 18,
+          }}>🤖</div>
+          <div style={{ fontWeight: 700, fontSize: 17, letterSpacing: -0.3 }}>
+            TradingBuddy <span style={{ color: '#a78bfa', fontWeight: 600 }}>EB</span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <select
+            value={autoScan}
+            onChange={e => setAutoScan(parseInt(e.target.value))}
+            style={{
+              padding: '6px 10px', borderRadius: 8,
+              background: 'rgba(20,20,35,0.6)', border: '1px solid rgba(139,92,246,0.25)',
+              color: '#fff', fontSize: 11, cursor: 'pointer',
+            }}
+          >
+            <option value="0">Auto-scan uit</option>
+            <option value="60">Elke 1 min</option>
+            <option value="120">Elke 2 min</option>
+            <option value="300">Elke 5 min</option>
+            <option value="600">Elke 10 min</option>
+          </select>
+          <button onClick={scan} disabled={loading}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px', borderRadius: 10,
+              background: loading ? 'rgba(139,92,246,0.2)' : 'rgba(139,92,246,0.15)',
+              border: '1px solid rgba(139,92,246,0.4)',
+              color: '#fff', fontSize: 12, fontWeight: 600,
+              cursor: loading ? 'wait' : 'pointer',
+            }}>
+            <Icon name="refresh" size={13} {...(loading ? { className: 'spin' } : {})} />
+            {loading ? `${progress.done}/${progress.total}` : 'Ververs'}
+          </button>
+          <a href="https://github.com" target="_blank" rel="noopener"
+            style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none', padding: 4 }}
+            title="Bekijk source op GitHub">
+            <Icon name="github" size={18} />
+          </a>
+        </div>
+      </header>
+
+      <div style={{ display: 'flex', minHeight: 'calc(100vh - 60px)' }}>
+        {/* LEFT SIDEBAR */}
+        <aside className="desktop-left" style={{
+          width: leftCollapsed ? 56 : 180,
+          background: 'rgba(8,8,16,0.6)',
+          borderRight: '1px solid rgba(139,92,246,0.1)',
+          padding: '14px 8px', display: 'flex', flexDirection: 'column', gap: 4,
+          transition: 'width 0.2s ease', flexShrink: 0,
+        }}>
+          <button onClick={() => setLeftCollapsed(v => !v)}
+            style={{
+              background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)',
+              color: '#a78bfa', borderRadius: 8, padding: 6, cursor: 'pointer',
+              display: 'flex', justifyContent: 'center', marginBottom: 8,
+            }}>
+            <Icon name={leftCollapsed ? 'chev_r' : 'chev_l'} size={14} />
+          </button>
+          {NAV_ITEMS.map(it => (
+            <SidebarItem key={it.id} icon={it.icon} label={it.label}
+              active={nav === it.id} collapsed={leftCollapsed}
+              onClick={() => setNav(it.id)} />
+          ))}
+        </aside>
+
+        {/* MOBILE DRAWER */}
+        {mobileLeftOpen && (
+          <div onClick={() => setMobileLeftOpen(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100 }}>
+            <aside onClick={e => e.stopPropagation()}
+              style={{
+                width: 220, height: '100%', background: 'rgba(10,10,20,0.97)',
+                padding: 16, borderRight: '1px solid rgba(139,92,246,0.2)',
+                display: 'flex', flexDirection: 'column', gap: 6,
+              }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <span style={{ fontWeight: 700 }}>Menu</span>
+                <button onClick={() => setMobileLeftOpen(false)}
+                  style={{ background: 'none', border: 'none', color: '#fff' }}>
+                  <Icon name="x" size={20} />
+                </button>
+              </div>
+              {NAV_ITEMS.map(it => (
+                <SidebarItem key={it.id} icon={it.icon} label={it.label}
+                  active={nav === it.id}
+                  onClick={() => { setNav(it.id); setMobileLeftOpen(false); }} />
+              ))}
+            </aside>
+          </div>
+        )}
+
+        {/* MAIN */}
+        <main style={{ flex: 1, padding: '16px 18px', minWidth: 0, overflowX: 'hidden' }}>
+          {/* STATUS BAR */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icon name="activity" size={20} color="#a78bfa" />
+              <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.3 }}>
+                {NAV_ITEMS.find(n => n.id === nav)?.label || 'Signalen'}
+              </span>
+            </div>
+            <StatCard label="BAROMETER" value="" accent="rgba(139,92,246,0.25)">
+              <div style={{ display: 'flex', gap: 5, marginTop: 4 }}>
+                {[0,1,2,3,4].map(i => (
+                  <div key={i} style={{
+                    width: 9, height: 9, borderRadius: '50%',
+                    background: i < barometer ? '#22c55e' : 'rgba(255,255,255,0.2)'
+                  }} />
+                ))}
+              </div>
+            </StatCard>
+            <StatCard label="FEAR/GREED"
+              value={fearGreed != null ? fearGreed : '—'}
+              valueColor={fearGreed == null ? '#fff' : fearGreed < 25 ? '#ef4444' : fearGreed < 50 ? '#f59e0b' : fearGreed < 75 ? '#22c55e' : '#10b981'}
+              accent="rgba(245,158,11,0.3)" info />
+            <StatCard label="BTC 24u"
+              value={fmtPct(btcChange24h)}
+              valueColor={btcChange24h >= 0 ? '#22c55e' : '#ef4444'}
+              accent="rgba(245,158,11,0.3)" info />
+            <StatCard label="DAY BIAS"
+              value={dayBias}
+              valueColor={dayBias === 'LONG' ? '#22c55e' : '#ef4444'}
+              accent={dayBias === 'LONG' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'} info>
+              <div style={{ marginTop: 4, height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ width: dayBiasPct + '%', height: '100%', background: dayBias === 'LONG' ? '#22c55e' : '#ef4444' }} />
+              </div>
+            </StatCard>
+            <StatCard label="SCAN STATUS"
+              value={loading ? `${Math.round(progress.done/Math.max(1,progress.total)*100)}%` : 'OK'}
+              valueColor={loading ? '#f59e0b' : '#10b981'}
+              accent="rgba(16,185,129,0.3)">
+              <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 9, marginTop: 2 }}>
+                {lastUpdate ? lastUpdate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }) : '—'}
+              </div>
+            </StatCard>
+          </div>
+
+          {rateLimitWarn && (
+            <div style={{
+              background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.4)',
+              padding: '8px 12px', borderRadius: 10, marginBottom: 10,
+              fontSize: 11, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <Icon name="warn" size={14} />
+              <span>
+                <strong>{totalCalls}</strong> API calls per scan. Binance kan vragen weigeren bij &gt;400.
+                Verlaag max paren of zet minder timeframes aan.
+              </span>
+            </div>
+          )}
+
+          {error && (
+            <div style={{
+              background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)',
+              padding: '10px 14px', borderRadius: 10, marginBottom: 12, fontSize: 12, color: '#fca5a5',
+            }}>
+              <Icon name="warn" size={14} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
+              {error}
+            </div>
+          )}
+
+          <div className="main-grid" style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(280px, 1fr) minmax(360px, 1.3fr)',
+            gap: 14, alignItems: 'flex-start',
+          }}>
+            {/* FILTERS + DETAIL */}
+            <section style={{
+              background: 'rgba(15,15,25,0.5)', border: '1px solid rgba(139,92,246,0.15)',
+              borderRadius: 14, padding: 14,
+            }}>
+              {/* TYPES */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+                {Object.entries(SIGNAL_META).map(([k, m]) => (
+                  <ChipButton key={k} active={enabledTypes[k]}
+                    onClick={() => setEnabledTypes(t => ({ ...t, [k]: !t[k] }))}
+                    color={m.color}>
+                    {m.label} <span style={{ opacity: 0.8, marginLeft: 3 }}>{counts[k]}</span>
+                  </ChipButton>
+                ))}
+                <div style={{ width: 1, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
+                <ChipButton active={direction === 'LONG' || direction === 'BOTH'}
+                  onClick={() => setDirection(direction === 'LONG' ? 'BOTH' : 'LONG')}
+                  color="#10b981">LONG</ChipButton>
+                <ChipButton active={direction === 'SHORT' || direction === 'BOTH'}
+                  onClick={() => setDirection(direction === 'SHORT' ? 'BOTH' : 'SHORT')}
+                  color="#ef4444">SHORT</ChipButton>
+              </div>
+
+              <div style={{ display: 'flex', gap: 6, marginBottom: 10, alignItems: 'center' }}>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5 }}>TF:</span>
+                {TIMEFRAMES.map(t => (
+                  <ChipButton key={t.id} active={timeframes[t.id]}
+                    onClick={() => setTimeframes(s => ({ ...s, [t.id]: !s[t.id] }))}>
+                    {t.label}
+                  </ChipButton>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', gap: 6, marginBottom: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5 }}>MARKT:</span>
+                {MARKETS.map(m => (
+                  <ChipButton key={m.id} active={enabledMarkets[m.id]}
+                    onClick={() => setEnabledMarkets(s => ({ ...s, [m.id]: !s[m.id] }))}>
+                    {m.label}
+                  </ChipButton>
+                ))}
+              </div>
+
+              {/* MAX PAIRS SLIDER */}
+              <div style={{ marginBottom: 10, padding: '10px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Icon name="bars" size={12} /> MAX PAREN PER MARKT
+                  </span>
+                  <span style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700 }}>{maxPairs}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {PAIR_OPTIONS.map(n => (
+                    <button key={n} onClick={() => setMaxPairs(n)}
+                      style={{
+                        flex: 1, padding: '4px 0', fontSize: 10, fontWeight: 600,
+                        border: 'none', borderRadius: 4, cursor: 'pointer',
+                        background: maxPairs === n ? '#8b5cf6' : 'rgba(255,255,255,0.05)',
+                        color: maxPairs === n ? '#fff' : 'rgba(255,255,255,0.6)',
+                      }}>{n}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* MIN RATING */}
+              <div style={{ marginBottom: 14, padding: '10px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Icon name="eye" size={12} /> MIN. RATING
+                  </span>
+                  <span style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700 }}>{minRating}%</span>
+                </div>
+                <input type="range" min="0" max="100" value={minRating}
+                  onChange={e => setMinRating(parseInt(e.target.value))}
+                  style={{ width: '100%' }} />
+              </div>
+
+              {selectedSignal ? (
+                <SignalDetail signal={selectedSignal} onClose={() => setSelectedSignal(null)} />
+              ) : (
+                <div style={{
+                  padding: 30, textAlign: 'center',
+                  border: '1px dashed rgba(139,92,246,0.2)', borderRadius: 12,
+                  color: 'rgba(255,255,255,0.4)', fontSize: 13,
+                }}>
+                  <Icon name="zap" size={32} style={{ opacity: 0.4, marginBottom: 10 }} />
+                  <div>Selecteer een signaal rechts om uit te vergroten en te analyseren</div>
+                </div>
+              )}
+            </section>
+
+            {/* SIGNALS LIST */}
+            <section style={{
+              background: 'rgba(15,15,25,0.5)', border: '1px solid rgba(139,92,246,0.15)',
+              borderRadius: 14, padding: 14,
+              maxHeight: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 10,
+                  background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)',
+                  display: 'grid', placeItems: 'center',
+                }}><Icon name="zap" size={18} /></div>
+                <span style={{ fontWeight: 800, fontSize: 16, letterSpacing: 1 }}>SIGNALEN</span>
+                <span style={{ color: '#fbbf24', fontWeight: 700, marginLeft: 'auto', fontFamily: 'ui-monospace, monospace' }}>
+                  {filteredSignals.length}<span style={{ color: 'rgba(255,255,255,0.4)' }}>/{signals.length}</span>
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, position: 'relative' }}>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: 1 }}>SORTEER OP:</span>
+                <button onClick={() => setShowSortMenu(v => !v)}
+                  style={{
+                    flex: 1, display: 'flex', justifyContent: 'space-between',
+                    background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)',
+                    color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer',
+                  }}>
+                  {SORT_OPTIONS.find(o => o.id === sortBy)?.label}
+                  <Icon name="chev_d" size={14} />
+                </button>
+                {showSortMenu && (
+                  <div style={{
+                    position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 20,
+                    background: 'rgba(15,15,25,0.98)', border: '1px solid rgba(139,92,246,0.3)',
+                    borderRadius: 10, padding: 4, minWidth: 160,
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                  }}>
+                    {SORT_OPTIONS.map(o => (
+                      <button key={o.id}
+                        onClick={() => { setSortBy(o.id); setShowSortMenu(false); }}
+                        style={{
+                          display: 'block', width: '100%', textAlign: 'left',
+                          padding: '8px 12px',
+                          background: sortBy === o.id ? 'rgba(139,92,246,0.2)' : 'transparent',
+                          color: sortBy === o.id ? '#a78bfa' : '#fff',
+                          border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontWeight: 500,
+                        }}>{o.label}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ position: 'relative', marginBottom: 10 }}>
+                <Icon name="search" size={14} style={{ position: 'absolute', left: 10, top: 9, color: 'rgba(255,255,255,0.4)' }} />
+                <input value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder="Zoek symbool..."
+                  style={{
+                    width: '100%', padding: '7px 10px 7px 30px',
+                    background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(139,92,246,0.2)',
+                    borderRadius: 8, color: '#fff', fontSize: 12, outline: 'none',
+                  }} />
+              </div>
+
+              <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {loading && signals.length === 0 ? (
+                  <div style={{ padding: 30, textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
+                    <Icon name="refresh" size={24} className="spin" style={{ marginBottom: 8 }} />
+                    <div>Scannen... {progress.done}/{progress.total}</div>
+                    <div style={{
+                      marginTop: 10, height: 4, background: 'rgba(255,255,255,0.1)',
+                      borderRadius: 2, overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        width: (progress.total ? (progress.done/progress.total*100) : 0) + '%',
+                        height: '100%', background: 'linear-gradient(90deg,#8b5cf6,#a78bfa)',
+                        transition: 'width 0.2s',
+                      }} />
+                    </div>
+                  </div>
+                ) : filteredSignals.length === 0 ? (
+                  <div style={{ padding: 30, textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
+                    Geen signalen voor deze filter.
+                  </div>
+                ) : (
+                  filteredSignals.slice(0, 100).map(sig => (
+                    <SignalCard key={sig.id} sig={sig}
+                      selected={selectedSignal?.id === sig.id}
+                      onClick={() => setSelectedSignal(sig)} />
+                  ))
+                )}
+              </div>
+            </section>
+          </div>
+
+          {/* FOOTER */}
+          <div style={{
+            marginTop: 14, padding: '8px 14px',
+            background: 'rgba(15,15,25,0.7)', border: '1px solid rgba(139,92,246,0.15)',
+            borderRadius: 12, display: 'flex', alignItems: 'center', gap: 16,
+            flexWrap: 'wrap', fontSize: 11,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{
+                width: 8, height: 8, borderRadius: '50%',
+                background: loading ? '#f59e0b' : '#22c55e',
+                animation: 'pulse-dot 2s infinite',
+              }} />
+              <span style={{ color: loading ? '#f59e0b' : '#22c55e', fontWeight: 600 }}>
+                {loading ? 'Bezig met scannen' : 'Verbonden'}
+              </span>
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.5)' }}>Signalen (gefilterd/totaal):</div>
+            <div><span style={{ color: '#06b6d4', fontWeight: 700 }}>FVG</span> <span style={{ fontFamily: 'ui-monospace, monospace' }}>{filteredSignals.filter(s=>s.type==='FVG').length} / {counts.FVG}</span></div>
+            <div><span style={{ color: '#f59e0b', fontWeight: 700 }}>OB</span>  <span style={{ fontFamily: 'ui-monospace, monospace' }}>{filteredSignals.filter(s=>s.type==='OB').length} / {counts.OB}</span></div>
+            <div><span style={{ color: '#a855f7', fontWeight: 700 }}>BOSS</span> <span style={{ fontFamily: 'ui-monospace, monospace' }}>{filteredSignals.filter(s=>s.type==='BOSS').length} / {counts.BOSS}</span></div>
+            <div><span style={{ color: '#10b981', fontWeight: 700 }}>FIB</span> <span style={{ fontFamily: 'ui-monospace, monospace' }}>{filteredSignals.filter(s=>s.type==='FIB').length} / {counts.FIB}</span></div>
+            <div style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.5)', fontFamily: 'ui-monospace, monospace' }}>
+              {new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </div>
+        </main>
+
+        {/* RIGHT SIDEBAR */}
+        <aside className="desktop-right" style={{
+          width: rightCollapsed ? 48 : 200,
+          background: 'rgba(8,8,16,0.6)',
+          borderLeft: '1px solid rgba(139,92,246,0.1)',
+          padding: '14px 8px', display: 'flex', flexDirection: 'column', gap: 6,
+          transition: 'width 0.2s ease', flexShrink: 0,
+        }}>
+          <button onClick={() => setRightCollapsed(v => !v)}
+            style={{
+              background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)',
+              color: '#a78bfa', borderRadius: 8, padding: 6, cursor: 'pointer',
+              display: 'flex', justifyContent: 'center', marginBottom: 8,
+            }}>
+            <Icon name={rightCollapsed ? 'chev_l' : 'chev_r'} size={14} />
+          </button>
+          {RIGHT_ICONS.map(it => (
+            <SidebarItem key={it.id} icon={it.icon} label={it.label} collapsed={rightCollapsed} />
+          ))}
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// MOUNT
+// ============================================================
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<TradingBuddyEB />);
+
+// Hide bootloader
+setTimeout(() => {
+  const boot = document.getElementById('boot');
+  if (boot) boot.classList.add('hidden');
+}, 100);
+</script>
+</body>
+</html>
