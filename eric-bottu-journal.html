@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="nl"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Eric Bottu — Trading Journaal</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --bg:#0A0E12;--bg2:#0E141A;--surface:#121A21;--surface2:#17222C;
+  --line:#223040;--line2:#2C3D4E;--text:#E9F0F4;--muted:#7E909E;--muted2:#566571;
+  --profit:#34D399;--profit-dim:#0F3A2C;--loss:#FF5C63;--loss-dim:#3A1418;
+  --blue:#5BA3DD;--blue-deep:#3F86C2;--blue-dim:#16324A;
+}
+*{box-sizing:border-box}
+html,body,#root{height:100%}
+body{margin:0;font-family:'Inter',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;letter-spacing:.1px;
+  background:radial-gradient(1100px 560px at 82% -12%,rgba(91,163,221,.10),transparent 60%),
+             radial-gradient(900px 480px at -10% 112%,rgba(52,211,153,.05),transparent 55%),var(--bg);}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}.disp{font-family:'Sora',sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:0 18px 80px}
+
+.topbar{position:sticky;top:0;z-index:30;backdrop-filter:blur(14px);background:rgba(10,14,18,.74);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:1080px;margin:0 auto;padding:13px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.brand-txt{font-family:'Sora';font-weight:800;font-size:17px;letter-spacing:.3px;line-height:1.05}
+.brand-txt small{display:block;color:var(--muted);font-weight:500;font-size:10.5px;letter-spacing:1.6px;text-transform:uppercase}
+.spacer{flex:1}
+.who{font-size:12px;color:var(--muted);font-family:'IBM Plex Mono';display:flex;align-items:center;gap:10px}
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px}
+.tab{border:0;background:none;color:var(--muted);font-weight:600;font-size:13px;padding:7px 13px;border-radius:7px;cursor:pointer;transition:.18s}
+.tab:hover{color:var(--text)}.tab.active{background:var(--surface2);color:var(--text)}
+.cur-sel{background:var(--surface);border:1px solid var(--line);color:var(--muted);border-radius:9px;padding:8px 9px;font-family:'IBM Plex Mono';font-size:13px;cursor:pointer}
+.btn{border:0;cursor:pointer;font-weight:600;font-size:13px;border-radius:9px;padding:9px 15px;transition:.16s;display:inline-flex;align-items:center;gap:7px;font-family:'Inter'}
+.btn:disabled{cursor:default}
+.btn-accent{background:linear-gradient(135deg,var(--blue),var(--blue-deep));color:#04253f;box-shadow:0 6px 18px rgba(91,163,221,.28)}
+.btn-accent:hover:not(:disabled){filter:brightness(1.07);transform:translateY(-1px)}
+.btn-ghost{background:var(--surface);border:1px solid var(--line);color:var(--text)}
+.btn-ghost:hover{border-color:var(--line2);background:var(--surface2)}
+.btn-sm{padding:6px 11px;font-size:12px;border-radius:7px}
+.eyebrow{font-family:'IBM Plex Mono';font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);margin:30px 0 12px}
+.card{background:linear-gradient(180deg,var(--surface),var(--bg2));border:1px solid var(--line);border-radius:16px}
+.grid{display:grid;gap:14px}
+.hero{grid-template-columns:300px 1fr;align-items:stretch}@media(max-width:780px){.hero{grid-template-columns:1fr}}
+.score-card{padding:22px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.score-card .label,.pnl-card .label{font-family:'IBM Plex Mono';font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted2)}
+.gauge-num{font-family:'Sora';font-weight:800;font-size:46px;line-height:1;margin-top:-46px}
+.gauge-sub{font-size:12px;color:var(--muted);margin-top:6px;text-align:center}
+.gauge-tier{font-family:'Sora';font-weight:700;font-size:14px;margin-top:10px;padding:4px 12px;border-radius:20px;border:1px solid}
+.pnl-card{padding:22px;display:flex;flex-direction:column;justify-content:center}
+.pnl-big{font-family:'Sora';font-weight:800;font-size:40px;line-height:1.05;margin:8px 0 2px}@media(max-width:480px){.pnl-big{font-size:32px}}
+.pnl-row{display:flex;gap:24px;margin-top:16px;flex-wrap:wrap}
+.pnl-mini .k{font-family:'IBM Plex Mono';font-size:11px;color:var(--muted2);letter-spacing:1px;text-transform:uppercase}
+.pnl-mini .v{font-family:'Sora';font-weight:700;font-size:18px;margin-top:3px}
+.stats{grid-template-columns:repeat(4,1fr)}@media(max-width:780px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{padding:16px}.stat .k{font-family:'IBM Plex Mono';font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted2)}
+.stat .v{font-family:'Sora';font-weight:700;font-size:23px;margin-top:8px}.stat .hint{font-size:11px;color:var(--muted);margin-top:4px}
+.pos{color:var(--profit)}.neg{color:var(--loss)}.neutral{color:var(--blue)}
+.chart-card{padding:20px}
+.chart-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px}
+.chart-title{font-family:'Sora';font-weight:700;font-size:16px}.chart-meta{font-family:'IBM Plex Mono';font-size:12px;color:var(--muted)}
+.t-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.input,.select,.textarea{background:var(--bg2);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:9px 11px;font-family:'Inter';font-size:13px;width:100%}
+.input:focus,.select:focus,.textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(91,163,221,.14)}
+.input.mono{font-family:'IBM Plex Mono'}
+.select{cursor:pointer;-webkit-appearance:none;appearance:none;padding-right:30px;background-repeat:no-repeat;background-position:right 10px center;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237E909E' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")}
+.table-card{overflow:hidden}.tscroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:840px}
+thead th{font-family:'IBM Plex Mono';font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted2);text-align:left;padding:13px 14px;border-bottom:1px solid var(--line);white-space:nowrap;font-weight:500}
+tbody td{padding:13px 14px;border-bottom:1px solid rgba(34,48,64,.5);white-space:nowrap}
+tbody tr:hover{background:var(--surface)}tbody tr:last-child td{border-bottom:0}
+.num{font-family:'IBM Plex Mono';font-size:12.5px;text-align:right}th.num{text-align:right}
+.sym{font-family:'Sora';font-weight:700;font-size:13px}
+.badge{font-family:'IBM Plex Mono';font-size:10px;letter-spacing:.5px;text-transform:uppercase;padding:3px 8px;border-radius:6px;border:1px solid;font-weight:500}
+.b-long{color:var(--profit);border-color:var(--profit-dim);background:rgba(52,211,153,.07)}
+.b-short{color:var(--loss);border-color:var(--loss-dim);background:rgba(255,92,99,.07)}
+.b-open{color:var(--blue);border-color:var(--blue-dim);background:rgba(91,163,221,.08)}
+.tag{font-size:11px;color:var(--muted);background:var(--surface2);padding:3px 9px;border-radius:6px;border:1px solid var(--line)}
+.iconbtn{background:none;border:0;cursor:pointer;color:var(--muted);padding:5px;border-radius:6px;transition:.15s}
+.iconbtn:hover{color:var(--text);background:var(--surface2)}.iconbtn.del:hover{color:var(--loss)}
+.empty{padding:54px 20px;text-align:center}.empty h3{font-family:'Sora';font-weight:700;font-size:18px;margin:0 0 6px}
+.empty p{color:var(--muted);font-size:14px;margin:0 auto 18px;max-width:380px}
+.overlay{position:fixed;inset:0;z-index:60;background:rgba(4,7,10,.66);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center;padding:28px 16px;overflow-y:auto}
+.modal{background:var(--bg2);border:1px solid var(--line2);border-radius:18px;width:100%;max-width:560px;box-shadow:0 30px 80px rgba(0,0,0,.6);animation:pop .22s ease}
+.modal.wide{max-width:720px}
+@keyframes pop{from{opacity:0;transform:translateY(10px) scale(.99)}to{opacity:1;transform:none}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid var(--line)}
+.modal-head h2{font-family:'Sora';font-weight:700;font-size:18px;margin:0}
+.modal-body{padding:22px;display:grid;grid-template-columns:1fr 1fr;gap:14px}.modal-body .full{grid-column:1/-1}
+.fld label{display:block;font-family:'IBM Plex Mono';font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted2);margin-bottom:7px}
+.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:3px}
+.seg button{flex:1;border:0;background:none;color:var(--muted);font-weight:600;font-size:13px;padding:8px;border-radius:6px;cursor:pointer;transition:.15s;font-family:'Inter'}
+.seg button.on-long{background:var(--profit-dim);color:var(--profit)}.seg button.on-short{background:var(--loss-dim);color:var(--loss)}
+.modal-foot{padding:16px 22px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.live{font-family:'IBM Plex Mono';font-size:12.5px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap}
+.live b{font-size:15px}
+.footer-note{margin-top:34px;text-align:center;color:var(--muted2);font-size:12px;line-height:1.7}
+.footer-note button{font:inherit;color:var(--blue);background:none;border:0;cursor:pointer}
+.loading{display:grid;place-items:center;min-height:100vh;color:var(--muted);font-family:'IBM Plex Mono';font-size:13px;letter-spacing:1px}
+/* calendar */
+.calbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap}
+.calbar h2{font-family:'Sora';font-weight:700;font-size:18px;margin:0;text-transform:capitalize}
+.calbar .navs{display:flex;gap:6px}
+.cal-total{font-family:'IBM Plex Mono';font-size:13px}
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal-dow{font-family:'IBM Plex Mono';font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted2);text-align:center;padding:4px 0}
+.cal-cell{aspect-ratio:1/1;border:1px solid var(--line);border-radius:10px;padding:7px 8px;display:flex;flex-direction:column;justify-content:space-between;min-height:62px;overflow:hidden}
+.cal-cell.empty-cell{border-color:transparent;background:none}
+.cal-cell.today{outline:1.5px solid var(--blue);outline-offset:-1px}
+.cal-day{font-family:'IBM Plex Mono';font-size:11px;color:var(--muted)}
+.cal-pnl{font-family:'Sora';font-weight:700;font-size:13px}
+.cal-cnt{font-family:'IBM Plex Mono';font-size:9.5px;color:var(--muted2)}
+@media(max-width:560px){.cal-cell{min-height:46px;padding:5px}.cal-pnl{font-size:11px}}
+.legend{display:flex;gap:14px;justify-content:center;margin-top:16px;font-family:'IBM Plex Mono';font-size:11px;color:var(--muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-2px}
+/* auth */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.auth-card{width:100%;max-width:400px;background:linear-gradient(180deg,var(--surface),var(--bg2));border:1px solid var(--line);border-radius:20px;padding:30px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.auth-brand{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:6px}
+.auth-brand .brand-txt{font-size:20px}
+.auth-card h1{font-family:'Sora';font-weight:700;font-size:18px;text-align:center;margin:18px 0 2px}
+.auth-card .sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:22px}
+.auth-card .fld{margin-bottom:13px}
+.auth-err{background:var(--loss-dim);border:1px solid #5a1f23;color:#ffc9cc;border-radius:9px;padding:10px 12px;font-size:12.5px;margin-bottom:13px}
+.auth-switch{text-align:center;margin-top:18px;font-size:13px;color:var(--muted)}
+.auth-switch button{background:none;border:0;color:var(--blue);font:inherit;font-weight:600;cursor:pointer}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+</style></head><body>
+<div id="app"></div><div id="modalRoot"></div>
+<script>
+/* Eric Bottu — Trading Journaal (standalone, één bestand) */
+(function () {
+  "use strict";
+  var BLUE = "#5BA3DD";
+  var ASSETS = ["Aandeel", "Crypto", "Forex", "Derivaat", "Index"];
+  var MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
+  var DOW = ["ma", "di", "wo", "do", "vr", "za", "zo"];
+
+  /* ---------- state ---------- */
+  var state = {
+    trades: loadTrades(),
+    cur: localStorage.getItem("eb:cur") || "$",
+    tab: "dashboard",
+    filterAsset: "Alle",
+    filterSetup: "Alle",
+    calY: new Date().getFullYear(),
+    calM: new Date().getMonth(),
+  };
+  var editId = undefined; // undefined=dicht, null=nieuw, string=bewerk
+  var imp = null;         // {rows, cols, map} tijdens CSV-import
+
+  function loadTrades() {
+    try { var r = JSON.parse(localStorage.getItem("eb:trades")); return Array.isArray(r) ? r : []; }
+    catch (e) { return []; }
+  }
+  function save() { localStorage.setItem("eb:trades", JSON.stringify(state.trades)); }
+  function uid() { return Math.random().toString(36).slice(2, 10); }
+
+  /* ---------- bereken ---------- */
+  function num(v) { if (v == null || v === "") return NaN; return parseFloat(String(v).replace(/\s/g, "").replace(",", ".")); }
+  function pnlOf(t) {
+    if (t.exit === "" || t.exit == null || isNaN(t.exit)) return null;
+    var g = t.direction === "long" ? (t.exit - t.entry) * t.quantity : (t.entry - t.exit) * t.quantity;
+    return g - (Number(t.fees) || 0);
+  }
+  function riskOf(t) { if (t.stop === "" || t.stop == null || isNaN(t.stop)) return null; var r = Math.abs(t.entry - t.stop) * t.quantity; return r > 0 ? r : null; }
+  function rOf(t) { var p = pnlOf(t), rk = riskOf(t); return p != null && rk ? p / rk : null; }
+  function isClosed(t) { return pnlOf(t) !== null; }
+  function pct(n) { return (n * 100).toFixed(1) + "%"; }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function fmtAmount(n) {
+    var s = Math.abs(n).toLocaleString("nl-NL", { maximumFractionDigits: 2 });
+    return state.cur.length > 1 ? (s + " " + state.cur) : (state.cur + s);
+  }
+  function money(n, sign) {
+    if (n == null || isNaN(n)) return "—";
+    var body = fmtAmount(n);
+    return n < 0 ? "-" + body : (sign && n > 0 ? "+" : "") + body;
+  }
+
+  function stats() {
+    var closed = state.trades.filter(isClosed).map(function (t) { return Object.assign({}, t, { pnl: pnlOf(t), r: rOf(t) }); });
+    closed.sort(function (a, b) { return (a.closedAt || "") > (b.closedAt || "") ? 1 : -1; });
+    var wins = closed.filter(function (t) { return t.pnl > 0; });
+    var losses = closed.filter(function (t) { return t.pnl < 0; });
+    var grossWin = wins.reduce(function (s, t) { return s + t.pnl; }, 0);
+    var grossLoss = Math.abs(losses.reduce(function (s, t) { return s + t.pnl; }, 0));
+    var net = closed.reduce(function (s, t) { return s + t.pnl; }, 0);
+    var winRate = closed.length ? wins.length / closed.length : 0;
+    var avgWin = wins.length ? grossWin / wins.length : 0;
+    var avgLoss = losses.length ? grossLoss / losses.length : 0;
+    var pf = grossLoss ? grossWin / grossLoss : (grossWin > 0 ? Infinity : 0);
+    var rrPrice = avgLoss ? avgWin / avgLoss : (avgWin > 0 ? Infinity : 0);
+    var expectancy = closed.length ? net / closed.length : 0;
+    var best = closed.reduce(function (m, t) { return Math.max(m, t.pnl); }, 0);
+    var worst = closed.reduce(function (m, t) { return Math.min(m, t.pnl); }, 0);
+    var withR = closed.filter(function (t) { return t.r != null; });
+    var totalR = withR.reduce(function (s, t) { return s + t.r; }, 0);
+    var avgR = withR.length ? totalR / withR.length : null;
+    var run = 0;
+    var curve = closed.map(function (t, i) { run += t.pnl; return { i: i + 1, date: t.closedAt, equity: Math.round(run * 100) / 100, sym: t.symbol }; });
+    var wScore = Math.min(winRate / 0.6, 1) * 100;
+    var pfScore = pf === Infinity ? 100 : Math.min(Math.max((pf - 1) / 2, 0), 1) * 100;
+    var rScore = avgR == null ? Math.min(rrPrice / 2, 1) * 100 : Math.min(Math.max(avgR / 1, 0), 1) * 100;
+    var score = closed.length ? Math.round(wScore * 0.3 + pfScore * 0.35 + rScore * 0.35) : 0;
+    if (net < 0) score = Math.min(score, 45);
+    var bySetup = {};
+    closed.forEach(function (t) { var k = t.setup || "—"; bySetup[k] = (bySetup[k] || 0) + t.pnl; });
+    var setupData = Object.keys(bySetup).map(function (name) { return { name: name, pnl: Math.round(bySetup[name] * 100) / 100 }; }).sort(function (a, b) { return b.pnl - a.pnl; });
+    return { closed: closed, openCount: state.trades.length - closed.length, net: net, winRate: winRate, pf: pf, rrPrice: rrPrice, avgWin: avgWin, avgLoss: avgLoss, expectancy: expectancy, best: best, worst: worst, score: score, curve: curve, setupData: setupData, wins: wins.length, losses: losses.length, totalR: totalR, avgR: avgR };
+  }
+
+  /* ---------- charts ---------- */
+  function gauge(value) {
+    var color = value >= 75 ? "#34D399" : value >= 30 ? BLUE : "#FF5C63";
+    return '<svg viewBox="0 0 200 116" width="200" style="max-width:100%">' +
+      '<path d="M 18 100 A 82 82 0 0 1 182 100" fill="none" stroke="#1c2a37" stroke-width="14" stroke-linecap="round"/>' +
+      '<path d="M 18 100 A 82 82 0 0 1 182 100" fill="none" stroke="' + color + '" stroke-width="14" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="' + (100 - value) + '"/>' +
+      '</svg><div class="gauge-num disp" style="color:' + color + ';text-align:center">' + value + '</div>';
+  }
+  function equityChart(curve) {
+    if (!curve.length) return "";
+    var W = 1000, H = 300, L = 60, R = 18, T = 16, B = 34;
+    var ys = curve.map(function (p) { return p.equity; });
+    var minY = Math.min.apply(null, ys.concat([0]));
+    var maxY = Math.max.apply(null, ys.concat([0]));
+    if (minY === maxY) maxY = minY + 1;
+    var n = curve.length;
+    function X(i) { return n === 1 ? (L + (W - L - R) / 2) : L + (W - L - R) * i / (n - 1); }
+    function Y(v) { return T + (H - T - B) * (1 - (v - minY) / (maxY - minY)); }
+    var line = "";
+    curve.forEach(function (p, i) { line += (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(p.equity).toFixed(1) + " "; });
+    var first = X(0).toFixed(1), last = X(n - 1).toFixed(1), zeroY = Y(0).toFixed(1);
+    var area = line + "L" + last + " " + zeroY + " L" + first + " " + zeroY + " Z";
+    var dotX = X(n - 1).toFixed(1), dotY = Y(curve[n - 1].equity).toFixed(1);
+    function lbl(v, y) { return '<text x="' + (L - 8) + '" y="' + (y + 4) + '" text-anchor="end" font-size="13" fill="#566571" font-family="IBM Plex Mono,monospace">' + money(v) + '</text>'; }
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block">' +
+      '<defs><linearGradient id="eq" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + BLUE + '" stop-opacity="0.34"/><stop offset="100%" stop-color="' + BLUE + '" stop-opacity="0"/></linearGradient></defs>' +
+      lbl(maxY, Y(maxY)) + lbl(minY, Y(minY)) +
+      '<line x1="' + L + '" y1="' + zeroY + '" x2="' + (W - R) + '" y2="' + zeroY + '" stroke="#32485a" stroke-dasharray="4 4"/>' +
+      '<path d="' + area + '" fill="url(#eq)"/>' +
+      '<path d="' + line + '" fill="none" stroke="' + BLUE + '" stroke-width="2.6"/>' +
+      '<circle cx="' + dotX + '" cy="' + dotY + '" r="4.5" fill="' + BLUE + '"/>' +
+      '</svg>';
+  }
+  function setupBars(data) {
+    if (!data.length) return "";
+    var maxAbs = Math.max.apply(null, data.map(function (d) { return Math.abs(d.pnl); }).concat([1]));
+    return '<div style="display:flex;flex-direction:column;gap:12px">' + data.map(function (d) {
+      var w = (Math.abs(d.pnl) / maxAbs) * 100;
+      var col = d.pnl >= 0 ? "#34D399" : "#FF5C63";
+      return '<div style="display:flex;align-items:center;gap:12px">' +
+        '<div style="width:84px;flex:none;font-size:13px;color:var(--text)">' + esc(d.name) + '</div>' +
+        '<div style="flex:1;background:rgba(255,255,255,.03);border-radius:6px;height:22px;position:relative">' +
+        '<div style="height:100%;width:' + w + '%;background:' + col + ';border-radius:6px;opacity:.85"></div></div>' +
+        '<div class="num" style="width:90px;flex:none;color:' + col + ';font-weight:600">' + money(d.pnl, true) + '</div>' +
+        '</div>';
+    }).join("") + '</div>';
+  }
+
+  /* ---------- views ---------- */
+  function statCard(k, v, cls, hint) {
+    return '<div class="card stat"><div class="k">' + k + '</div><div class="v ' + (cls || "") + '">' + v + '</div>' + (hint ? '<div class="hint">' + hint + '</div>' : "") + '</div>';
+  }
+  function dashboard() {
+    var s = stats();
+    if (!s.closed.length) {
+      return '<div class="eyebrow">Overzicht</div><div class="card empty"><h3>Nog geen afgeronde trades</h3>' +
+        '<p>Log je eerste trade met entry- én exitprijs. Voeg een stop-loss toe en je krijgt automatisch je R-multiple.</p>' +
+        '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">' +
+        '<button class="btn btn-accent" data-action="add">+ Eerste trade toevoegen</button>' +
+        '<button class="btn btn-ghost" data-action="demo">Demo-data laden</button></div></div>';
+    }
+    var tierT = s.score >= 75 ? "Scherp" : s.score >= 50 ? "Solide" : s.score >= 30 ? "Wisselend" : "Kwetsbaar";
+    var tierC = s.score >= 75 ? "var(--profit)" : s.score >= 30 ? "var(--blue)" : "var(--loss)";
+    return '<div class="eyebrow">Overzicht · ' + s.closed.length + ' afgeronde trades · ' + s.openCount + ' open</div>' +
+      '<div class="grid hero">' +
+        '<div class="card score-card"><div class="label">Trade-score</div>' + gauge(s.score) +
+          '<div class="gauge-sub">win ratio · profit factor · R-multiple</div>' +
+          '<div class="gauge-tier" style="color:' + tierC + ';border-color:' + tierC + '">' + tierT + '</div></div>' +
+        '<div class="card pnl-card"><div class="label">Netto resultaat</div>' +
+          '<div class="pnl-big ' + (s.net >= 0 ? "pos" : "neg") + '">' + money(s.net, true) + '</div>' +
+          '<div class="pnl-row">' +
+            mini("Win ratio", pct(s.winRate), "") +
+            mini("Profit factor", s.pf === Infinity ? "∞" : s.pf.toFixed(2), "neutral") +
+            mini("Totaal R", (s.totalR >= 0 ? "+" : "") + s.totalR.toFixed(1) + "R", s.totalR >= 0 ? "pos" : "neg") +
+            mini("W / L", s.wins + " / " + s.losses, "") +
+          '</div></div>' +
+      '</div>' +
+      '<div class="eyebrow">Equity-curve</div>' +
+      '<div class="card chart-card"><div class="chart-head"><div class="chart-title">Cumulatief resultaat</div>' +
+        '<div class="chart-meta">' + money(s.net, true) + ' over ' + s.closed.length + ' trades</div></div>' + equityChart(s.curve) + '</div>' +
+      '<div class="eyebrow">Statistieken</div><div class="grid stats">' +
+        statCard("Gem. winst", money(s.avgWin), "pos") +
+        statCard("Gem. verlies", money(-s.avgLoss), "neg") +
+        statCard("Gem. R", s.avgR == null ? "—" : (s.avgR >= 0 ? "+" : "") + s.avgR.toFixed(2) + "R", "neutral", "winst in eenheden risico") +
+        statCard("Profit factor", s.pf === Infinity ? "∞" : s.pf.toFixed(2), "neutral", "bruto winst ÷ verlies") +
+        statCard("Beste trade", money(s.best, true), "pos") +
+        statCard("Slechtste trade", money(s.worst, true), "neg") +
+        statCard("Verwachting", money(s.expectancy, true), s.expectancy >= 0 ? "pos" : "neg", "per trade") +
+        statCard("Win ratio", pct(s.winRate), "", s.wins + " van " + s.closed.length) +
+      '</div>' +
+      '<div class="eyebrow">Resultaat per setup</div><div class="card chart-card">' + setupBars(s.setupData) + '</div>';
+  }
+  function mini(k, v, cls) { return '<div class="pnl-mini"><div class="k">' + k + '</div><div class="v ' + (cls || "") + '">' + v + '</div></div>'; }
+
+  function tradesView() {
+    var list = state.trades.slice()
+      .filter(function (t) { return state.filterAsset === "Alle" || t.assetType === state.filterAsset; })
+      .filter(function (t) { return state.filterSetup === "Alle" || t.setup === state.filterSetup; })
+      .sort(function (a, b) { return (a.openedAt || "") < (b.openedAt || "") ? 1 : -1; });
+    var setups = ["Alle"].concat(state.trades.map(function (t) { return t.setup; }).filter(function (v, i, a) { return v && a.indexOf(v) === i; }));
+    var opts = function (arr, sel) { return arr.map(function (a) { return '<option' + (a === sel ? " selected" : "") + '>' + esc(a) + '</option>'; }).join(""); };
+    var head = '<div class="eyebrow">Trades · ' + list.length + '</div>' +
+      '<div class="t-tools">' +
+      '<select class="select" style="width:auto" data-role="filterAsset">' + opts(["Alle"].concat(ASSETS), state.filterAsset) + '</select>' +
+      '<select class="select" style="width:auto" data-role="filterSetup">' + opts(setups, state.filterSetup) + '</select>' +
+      '<div style="flex:1"></div>' +
+      '<button class="btn btn-ghost btn-sm" data-action="import">⇪ CSV importeren</button>' +
+      '<button class="btn btn-accent btn-sm" data-action="add">+ Nieuwe trade</button></div>';
+    if (!list.length) return head + '<div class="card empty"><h3>Geen trades gevonden</h3><p>Pas je filters aan, voeg een trade toe of importeer een CSV van je broker.</p></div>';
+    var rows = list.map(function (t) {
+      var p = pnlOf(t), r = rOf(t), open = p === null;
+      var dirBadge = open ? '<span class="badge b-open">open</span>' : '<span class="badge ' + (t.direction === "long" ? "b-long" : "b-short") + '">' + t.direction + '</span>';
+      return '<tr>' +
+        '<td class="sym">' + esc(t.symbol) + '</td>' +
+        '<td style="color:var(--muted);font-size:12px">' + esc(t.assetType) + '</td>' +
+        '<td>' + dirBadge + '</td>' +
+        '<td class="num">' + t.entry + '</td>' +
+        '<td class="num" style="color:var(--muted)">' + (t.stop == null || t.stop === "" ? "—" : t.stop) + '</td>' +
+        '<td class="num">' + (open ? "—" : t.exit) + '</td>' +
+        '<td class="num">' + t.quantity + '</td>' +
+        '<td class="num ' + (open ? "" : p >= 0 ? "pos" : "neg") + '" style="font-weight:600">' + (open ? "—" : money(p, true)) + '</td>' +
+        '<td class="num ' + (r == null ? "" : r >= 0 ? "pos" : "neg") + '">' + (r == null ? "—" : (r >= 0 ? "+" : "") + r.toFixed(2) + "R") + '</td>' +
+        '<td><span class="tag">' + esc(t.setup || "—") + '</span></td>' +
+        '<td class="num" style="color:var(--muted);text-align:left">' + (t.openedAt || "") + '</td>' +
+        '<td style="white-space:nowrap"><button class="iconbtn" data-action="edit" data-id="' + t.id + '" title="Bewerken">✎</button>' +
+        '<button class="iconbtn del" data-action="delete" data-id="' + t.id + '" title="Verwijderen">🗑</button></td>' +
+        '</tr>';
+    }).join("");
+    return head + '<div class="card table-card"><div class="tscroll"><table>' +
+      '<thead><tr><th>Symbool</th><th>Type</th><th>Richting</th><th class="num">Entry</th><th class="num">Stop</th><th class="num">Exit</th><th class="num">Aantal</th><th class="num">PnL</th><th class="num">R</th><th>Setup</th><th>Datum</th><th></th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table></div></div>';
+  }
+
+  function calendarView() {
+    var daily = {};
+    state.trades.filter(isClosed).forEach(function (t) {
+      var d = t.closedAt || t.openedAt; if (!d) return;
+      if (!daily[d]) daily[d] = { pnl: 0, n: 0 };
+      daily[d].pnl += pnlOf(t); daily[d].n += 1;
+    });
+    var y = state.calY, m = state.calM;
+    var startDow = (new Date(y, m, 1).getDay() + 6) % 7;
+    var days = new Date(y, m + 1, 0).getDate();
+    var cells = [];
+    for (var i = 0; i < startDow; i++) cells.push(null);
+    for (var d = 1; d <= days; d++) cells.push(d);
+    while (cells.length % 7 !== 0) cells.push(null);
+    var pad = function (x) { return String(x).padStart(2, "0"); };
+    var prefix = y + "-" + pad(m + 1);
+    var monthKeys = Object.keys(daily).filter(function (k) { return k.indexOf(prefix) === 0; });
+    var monthTotal = monthKeys.reduce(function (s, k) { return s + daily[k].pnl; }, 0);
+    var monthN = monthKeys.reduce(function (s, k) { return s + daily[k].n; }, 0);
+    var maxAbs = Math.max.apply(null, monthKeys.map(function (k) { return Math.abs(daily[k].pnl); }).concat([1]));
+    var now = new Date();
+    var todayKey = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate());
+    var grid = cells.map(function (dd) {
+      if (dd == null) return '<div class="cal-cell empty-cell"></div>';
+      var k = prefix + "-" + pad(dd);
+      var cell = daily[k];
+      var bg = "transparent", border = "var(--line)";
+      if (cell) {
+        var a = 0.12 + 0.45 * (Math.abs(cell.pnl) / maxAbs);
+        bg = cell.pnl >= 0 ? "rgba(52,211,153," + a + ")" : "rgba(255,92,99," + a + ")";
+        border = cell.pnl >= 0 ? "rgba(52,211,153,.45)" : "rgba(255,92,99,.45)";
+      }
+      var inner = '<div class="cal-day">' + dd + '</div>';
+      if (cell) inner += '<div><div class="cal-pnl" style="color:' + (cell.pnl >= 0 ? "#bff3df" : "#ffc9cc") + '">' + money(cell.pnl, true) + '</div><div class="cal-cnt">' + cell.n + (cell.n === 1 ? " trade" : " trades") + '</div></div>';
+      return '<div class="cal-cell' + (k === todayKey ? " today" : "") + '" style="background:' + bg + ';border-color:' + border + '">' + inner + '</div>';
+    }).join("");
+    return '<div class="eyebrow">Kalender</div><div class="card chart-card">' +
+      '<div class="calbar"><div style="display:flex;align-items:center;gap:12px"><h2>' + MONTHS[m] + ' ' + y + '</h2>' +
+      '<div class="navs"><button class="btn btn-ghost btn-sm" data-action="cal-prev">‹</button>' +
+      '<button class="btn btn-ghost btn-sm" data-action="cal-today">vandaag</button>' +
+      '<button class="btn btn-ghost btn-sm" data-action="cal-next">›</button></div></div>' +
+      '<div class="cal-total">Maand: <b class="' + (monthTotal >= 0 ? "pos" : "neg") + '" style="font-family:Sora">' + money(monthTotal, true) + '</b><span style="color:var(--muted2)"> · ' + monthN + ' trades</span></div></div>' +
+      '<div class="calgrid">' + DOW.map(function (x) { return '<div class="cal-dow">' + x + '</div>'; }).join("") + '</div>' +
+      '<div class="calgrid" style="margin-top:6px">' + grid + '</div>' +
+      '<div class="legend"><span><i style="background:rgba(52,211,153,.5)"></i>winstdag</span><span><i style="background:rgba(255,92,99,.5)"></i>verliesdag</span><span><i style="background:transparent;border:1.5px solid var(--blue)"></i>vandaag</span></div></div>';
+  }
+
+  /* ---------- render ---------- */
+  function render() {
+    var view = state.tab === "dashboard" ? dashboard() : state.tab === "trades" ? tradesView() : calendarView();
+    var tab = function (id, label) { return '<button class="tab' + (state.tab === id ? " active" : "") + '" data-action="tab" data-tab="' + id + '">' + label + '</button>'; };
+    var curOpt = function (c) { return '<option' + (state.cur === c ? " selected" : "") + '>' + c + '</option>'; };
+    document.getElementById("app").innerHTML =
+      '<header class="topbar"><div class="topbar-in">' +
+        '<div class="brand">' + logoSvg(34) + '<div class="brand-txt">Eric Bottu<small>Trading journaal</small></div></div>' +
+        '<div class="spacer"></div>' +
+        '<div class="tabs">' + tab("dashboard", "Dashboard") + tab("trades", "Trades") + tab("kalender", "Kalender") + '</div>' +
+        '<select class="cur-sel" data-role="cur" title="Valuta">' + curOpt("$") + curOpt("€") + curOpt("£") + curOpt("USDC") + curOpt("USDT") + '</select>' +
+        '<button class="btn btn-accent" data-action="add">+ Trade</button>' +
+      '</div></header>' +
+      '<main class="wrap">' + view +
+        '<div class="footer-note">In de geest van bitease.io · je trades worden in deze browser bewaard · ' +
+        '<button data-action="reset">demo resetten</button></div></main>';
+  }
+  function logoSvg(size) {
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 64 60" fill="none">' +
+      '<path d="M4 49 C 16 60 36 57 46 47 S 58 31 60 22" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" fill="none"/>' +
+      '<circle cx="46.5" cy="46" r="4.4" fill="' + BLUE + '"/>' +
+      '<rect x="9" y="34" width="7.5" height="15" rx="1.2" fill="' + BLUE + '"/>' +
+      '<rect x="20" y="26" width="7.5" height="23" rx="1.2" fill="currentColor"/>' +
+      '<rect x="31" y="18" width="7.5" height="31" rx="1.2" fill="' + BLUE + '"/>' +
+      '<rect x="42" y="8" width="7.5" height="38" rx="1.2" fill="currentColor"/></svg>';
+  }
+
+  /* ---------- modal: trade ---------- */
+  function openTrade(id) { editId = id ? id : null; renderModal(); }
+  function closeModal() { editId = undefined; imp = null; document.getElementById("modalRoot").innerHTML = ""; }
+  function currentTrade() { return editId ? state.trades.filter(function (t) { return t.id === editId; })[0] : null; }
+  function renderModal() {
+    var t = currentTrade();
+    var v = function (x) { return x == null ? "" : x; };
+    var f = t ? { symbol: t.symbol, assetType: t.assetType, direction: t.direction, entry: v(t.entry), exit: v(t.exit), stop: v(t.stop), quantity: v(t.quantity), fees: v(t.fees), setup: v(t.setup), openedAt: t.openedAt, notes: v(t.notes) }
+      : { symbol: "", assetType: "Aandeel", direction: "long", entry: "", exit: "", stop: "", quantity: "", fees: "0", setup: "", openedAt: new Date().toISOString().slice(0, 10), notes: "" };
+    var assetOpts = ASSETS.map(function (a) { return '<option' + (a === f.assetType ? " selected" : "") + '>' + a + '</option>'; }).join("");
+    var fld = function (label, id, val, type, extra) { return '<div class="fld"><label>' + label + '</label><input class="input mono" id="' + id + '" value="' + esc(val) + '" ' + (type ? 'type="' + type + '" step="any"' : "") + ' ' + (extra || "") + '></div>'; };
+    var html = '<div class="overlay" data-action="close"><div class="modal" id="tradeModal">' +
+      '<div class="modal-head"><h2>' + (t ? "Trade bewerken" : "Nieuwe trade") + '</h2><button class="iconbtn" data-action="close">✕</button></div>' +
+      '<div class="modal-body">' +
+        '<div class="fld"><label>Symbool</label><input class="input mono" id="m_symbol" value="' + esc(f.symbol) + '" placeholder="bv. AAPL"></div>' +
+        '<div class="fld"><label>Type</label><select class="select" id="m_assetType">' + assetOpts + '</select></div>' +
+        '<div class="fld full"><label>Richting</label><div class="seg" id="m_dir">' +
+          '<button class="' + (f.direction === "long" ? "on-long" : "") + '" data-action="dir" data-dir="long">Long</button>' +
+          '<button class="' + (f.direction === "short" ? "on-short" : "") + '" data-action="dir" data-dir="short">Short</button></div></div>' +
+        fld("Entry-prijs", "m_entry", f.entry, "number", 'placeholder="0.00"') +
+        fld('Stop-loss <span style="color:var(--muted2)">(optie)</span>', "m_stop", f.stop, "number", 'placeholder="—"') +
+        fld('Exit-prijs <span style="color:var(--muted2)">(leeg = open)</span>', "m_exit", f.exit, "number", 'placeholder="—"') +
+        fld("Aantal", "m_quantity", f.quantity, "number", 'placeholder="0"') +
+        fld("Kosten / fees", "m_fees", f.fees, "number", 'placeholder="0"') +
+        '<div class="fld"><label>Setup / strategie</label><input class="input" id="m_setup" value="' + esc(f.setup) + '" placeholder="bv. Breakout"></div>' +
+        '<div class="fld full"><label>Datum</label><input class="input mono" id="m_openedAt" type="date" value="' + esc(f.openedAt) + '"></div>' +
+        '<div class="fld full"><label>Notities</label><textarea class="textarea" id="m_notes" rows="2" placeholder="Wat ging goed / fout?">' + esc(f.notes) + '</textarea></div>' +
+      '</div>' +
+      '<div class="modal-foot"><div class="live" id="m_live"></div>' +
+        '<div style="display:flex;gap:10px"><button class="btn btn-ghost" data-action="close">Annuleren</button>' +
+        '<button class="btn btn-accent" data-action="save">' + (t ? "Opslaan" : "Toevoegen") + '</button></div></div>' +
+      '</div></div>';
+    document.getElementById("modalRoot").innerHTML = html;
+    modalDir = f.direction;
+    updateLive();
+  }
+  var modalDir = "long";
+  function updateLive() {
+    var g = function (id) { return num(document.getElementById(id).value); };
+    var entry = g("m_entry"), exit = document.getElementById("m_exit").value === "" ? "" : g("m_exit"), stop = document.getElementById("m_stop").value === "" ? "" : g("m_stop"), qty = g("m_quantity"), fees = g("m_fees") || 0;
+    var t = { direction: modalDir, entry: entry, exit: exit, stop: stop, quantity: qty, fees: fees };
+    var p = pnlOf(t), rk = riskOf(t), r = rOf(t);
+    var parts = [];
+    if (rk != null) parts.push('Risico: <b class="neutral">' + fmtAmount(rk) + '</b>');
+    parts.push(p != null ? 'PnL: <b class="' + (p >= 0 ? "pos" : "neg") + '">' + (p >= 0 ? "+" : "-") + fmtAmount(p) + '</b>' : '<span style="color:var(--muted2)">Open positie</span>');
+    if (r != null) parts.push('R: <b class="' + (r >= 0 ? "pos" : "neg") + '">' + (r >= 0 ? "+" : "") + r.toFixed(2) + 'R</b>');
+    var el = document.getElementById("m_live"); if (el) el.innerHTML = parts.join("");
+  }
+  function saveTrade() {
+    var g = function (id) { return document.getElementById(id).value; };
+    var entry = num(g("m_entry")), qty = num(g("m_quantity"));
+    var symbol = g("m_symbol").trim();
+    if (!symbol || isNaN(entry) || isNaN(qty)) { alert("Vul minstens symbool, entry-prijs en aantal in."); return; }
+    var exitRaw = g("m_exit"), stopRaw = g("m_stop");
+    var openedAt = g("m_openedAt") || new Date().toISOString().slice(0, 10);
+    var rec = {
+      id: editId || uid(),
+      symbol: symbol.toUpperCase(), assetType: g("m_assetType"), direction: modalDir,
+      entry: entry, quantity: qty, fees: num(g("m_fees")) || 0,
+      exit: exitRaw === "" ? "" : num(exitRaw), stop: stopRaw === "" ? "" : num(stopRaw),
+      setup: g("m_setup").trim(), openedAt: openedAt, closedAt: exitRaw === "" ? "" : openedAt, notes: g("m_notes"),
+    };
+    if (editId) state.trades = state.trades.map(function (t) { return t.id === editId ? rec : t; });
+    else state.trades.push(rec);
+    save(); closeModal(); render();
+  }
+
+  /* ---------- CSV ---------- */
+  var FIELDS = [
+    { key: "symbol", label: "Symbool", req: true, al: ["symbol", "ticker", "instrument", "asset", "symbool", "pair", "market", "product"] },
+    { key: "direction", label: "Richting", al: ["direction", "side", "richting", "position", "buy/sell", "type", "action"] },
+    { key: "entry", label: "Entry-prijs", req: true, al: ["entry", "entryprice", "entry price", "open", "openprice", "open price", "buy", "instap", "price"] },
+    { key: "exit", label: "Exit-prijs", al: ["exit", "exitprice", "exit price", "close", "closeprice", "close price", "sell", "uitstap"] },
+    { key: "stop", label: "Stop-loss", al: ["stop", "stoploss", "stop loss", "sl", "stop-loss"] },
+    { key: "quantity", label: "Aantal", req: true, al: ["quantity", "qty", "size", "amount", "aantal", "volume", "contracts", "shares", "units"] },
+    { key: "fees", label: "Fees", al: ["fees", "fee", "commission", "cost", "kosten", "commissie"] },
+    { key: "setup", label: "Setup", al: ["setup", "strategy", "strategie", "tag", "note", "notes"] },
+    { key: "assetType", label: "Type", al: ["assettype", "asset type", "class", "category", "markt"] },
+    { key: "date", label: "Datum", al: ["date", "opened", "open date", "datum", "time", "opened at", "entry date", "closed", "close date"] },
+  ];
+  function parseCSV(text) {
+    var rows = [], field = "", row = [], inQ = false, i = 0;
+    while (i < text.length) {
+      var c = text[i];
+      if (inQ) { if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQ = false; } else field += c; }
+      else { if (c === '"') inQ = true; else if (c === ",") { row.push(field); field = ""; } else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; } else if (c !== "\r") field += c; }
+      i++;
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+    return rows.filter(function (r) { return !(r.length === 1 && r[0].trim() === ""); });
+  }
+  function guessMap(cols) {
+    var map = {};
+    FIELDS.forEach(function (fd) {
+      var hit = "";
+      cols.forEach(function (c) { if (!hit && fd.al.indexOf(c.trim().toLowerCase()) >= 0) hit = c; });
+      map[fd.key] = hit;
+    });
+    return map;
+  }
+  function parseDir(v) { return /short|sell|verkoop/.test(String(v || "").toLowerCase()) ? "short" : "long"; }
+  function parseAsset(v) { var s = String(v || "").toLowerCase(); if (/crypto|btc|eth|coin/.test(s)) return "Crypto"; if (/forex|fx|usd|eur|gbp/.test(s)) return "Forex"; var h = ""; ASSETS.forEach(function (a) { if (!h && s.indexOf(a.toLowerCase().slice(0, 4)) >= 0) h = a; }); return h || "Aandeel"; }
+  function openImport() { imp = null; renderImport(); }
+  function renderImport() {
+    var body;
+    if (!imp) {
+      body = '<div style="padding:30px;text-align:center"><p style="color:var(--muted);font-size:14px;max-width:420px;margin:0 auto 20px">Exporteer je trades als CSV bij je broker en kies het bestand. Kolommen worden automatisch herkend; daarna kun je ze nalopen.</p>' +
+        '<input type="file" accept=".csv,text/csv" id="csvFile" style="display:none" data-role="csvfile">' +
+        '<button class="btn btn-accent" data-action="csv-choose">⇪ Kies CSV-bestand</button>' +
+        '<div id="csvErr" style="color:var(--loss);margin-top:16px;font-size:13px"></div></div>';
+    } else {
+      var sel = function (key) {
+        var o = '<option value="">— niet koppelen —</option>' + imp.cols.map(function (c) { return '<option' + (imp.map[key] === c ? " selected" : "") + '>' + esc(c) + '</option>'; }).join("");
+        return '<select class="select" data-role="map" data-key="' + key + '">' + o + '</select>';
+      };
+      var grid = FIELDS.map(function (fd) { return '<div class="fld"><label>' + fd.label + (fd.req ? ' <span style="color:var(--loss)">*</span>' : "") + '</label>' + sel(fd.key) + '</div>'; }).join("");
+      var prev = importPreview();
+      var ok = prev.filter(function (p) { return p.ok; }).length;
+      body = '<div style="padding:20px 22px;max-height:52vh;overflow-y:auto"><div style="font-size:12px;color:var(--muted);margin-bottom:14px"><b style="color:var(--text)">' + imp.rows.length + '</b> rijen gelezen · koppel je kolommen:</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' + grid + '</div></div>' +
+        '<div class="modal-foot"><div class="live"><span><b class="' + (ok ? "pos" : "neg") + '">' + ok + '</b> van ' + imp.rows.length + ' rijen klaar</span></div>' +
+        '<div style="display:flex;gap:10px"><button class="btn btn-ghost" data-action="csv-back">Ander bestand</button>' +
+        '<button class="btn btn-accent" data-action="csv-import">Importeer ' + ok + ' trades</button></div></div>';
+    }
+    document.getElementById("modalRoot").innerHTML =
+      '<div class="overlay" data-action="close"><div class="modal wide" id="impModal">' +
+      '<div class="modal-head"><h2>CSV importeren</h2><button class="iconbtn" data-action="close">✕</button></div>' + body + '</div></div>';
+  }
+  function importPreview() {
+    return imp.rows.map(function (row) {
+      var g = function (k) { return imp.map[k] ? (row[imp.map[k]] || "") : ""; };
+      var entry = num(g("entry")), qty = num(g("quantity"));
+      var exitRaw = g("exit"), stopRaw = g("stop");
+      var sym = String(g("symbol") || "").trim().toUpperCase();
+      return {
+        ok: !!sym && !isNaN(entry) && !isNaN(qty),
+        symbol: sym, assetType: parseAsset(g("assetType") || g("symbol")), direction: parseDir(g("direction")),
+        entry: entry, quantity: qty, exit: exitRaw === "" ? "" : num(exitRaw), stop: stopRaw === "" ? "" : num(stopRaw),
+        fees: num(g("fees")) || 0, setup: String(g("setup") || "").trim(), date: String(g("date") || "").trim(),
+      };
+    });
+  }
+  function doImport() {
+    var out = importPreview().filter(function (p) { return p.ok; }).map(function (p) {
+      var d = p.date, m = d.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/) || d.match(/(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+      if (m) d = m[1].length === 4 ? (m[1] + "-" + m[2].padStart(2, "0") + "-" + m[3].padStart(2, "0")) : (m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0"));
+      else d = new Date().toISOString().slice(0, 10);
+      return { id: uid(), symbol: p.symbol, assetType: p.assetType, direction: p.direction, entry: p.entry, exit: p.exit, stop: p.stop, quantity: p.quantity, fees: p.fees, setup: p.setup, openedAt: d, closedAt: p.exit === "" ? "" : d, notes: "" };
+    });
+    state.trades = state.trades.concat(out); save(); closeModal(); render();
+  }
+
+  function demoTrades() {
+    function mk(d, sym, at, dir, e, x, st, q, f, setup) { return { id: uid(), symbol: sym, assetType: at, direction: dir, entry: e, exit: x, stop: st, quantity: q, fees: f, setup: setup, openedAt: d, closedAt: d, notes: "" }; }
+    return [
+      mk("2026-04-02", "AAPL", "Aandeel", "long", 168.2, 174.5, 164, 30, 4, "Breakout"),
+      mk("2026-04-05", "BTC", "Crypto", "long", 61200, 59800, 59500, 0.15, 6, "Pullback"),
+      mk("2026-04-09", "EURUSD", "Forex", "short", 1.092, 1.0855, 1.0955, 50000, 3, "Range"),
+      mk("2026-04-14", "NVDA", "Aandeel", "long", 870, 905, 852, 12, 4, "Breakout"),
+      mk("2026-04-18", "ETH", "Crypto", "short", 3450, 3520, 3505, 4, 5, "Reversal"),
+      mk("2026-04-23", "TSLA", "Aandeel", "long", 168, 159, 162, 25, 4, "Pullback"),
+      mk("2026-04-29", "SOL", "Crypto", "long", 142, 168, 134, 30, 4, "Breakout"),
+      mk("2026-05-06", "GBPUSD", "Forex", "long", 1.252, 1.261, 1.247, 40000, 3, "Range"),
+      mk("2026-05-12", "MSFT", "Aandeel", "long", 412, 408, 405, 18, 4, "Reversal"),
+      mk("2026-05-19", "BTC", "Crypto", "long", 64000, 67800, 62500, 0.2, 7, "Breakout"),
+      mk("2026-05-21", "ADBE", "Aandeel", "short", 540, 524, 552, 10, 4, "Reversal"),
+      { id: uid(), symbol: "AMD", assetType: "Aandeel", direction: "long", entry: 158.4, exit: "", stop: 152, quantity: 20, fees: 4, setup: "Pullback", openedAt: "2026-05-28", closedAt: "", notes: "Wacht op uitbraak >165" },
+    ];
+  }
+
+  /* ---------- events ---------- */
+  document.addEventListener("click", function (e) {
+    var el = e.target.closest("[data-action]");
+    if (!el) return;
+    var a = el.dataset.action;
+    if (a === "tab") { state.tab = el.dataset.tab; render(); }
+    else if (a === "add") { openTrade(null); }
+    else if (a === "edit") { openTrade(el.dataset.id); }
+    else if (a === "delete") { if (confirm("Deze trade verwijderen?")) { state.trades = state.trades.filter(function (t) { return t.id !== el.dataset.id; }); save(); render(); } }
+    else if (a === "close") { if (e.target === el) closeModal(); }
+    else if (a === "save") { saveTrade(); }
+    else if (a === "dir") { modalDir = el.dataset.dir; var seg = document.getElementById("m_dir"); seg.children[0].className = modalDir === "long" ? "on-long" : ""; seg.children[1].className = modalDir === "short" ? "on-short" : ""; updateLive(); }
+    else if (a === "import") { openImport(); }
+    else if (a === "csv-choose") { document.getElementById("csvFile").click(); }
+    else if (a === "csv-back") { imp = null; renderImport(); }
+    else if (a === "csv-import") { doImport(); }
+    else if (a === "demo") { state.trades = state.trades.concat(demoTrades()); save(); render(); }
+    else if (a === "reset") { if (confirm("Alles wissen en demo-data laden?")) { state.trades = demoTrades(); save(); render(); } }
+    else if (a === "cal-prev") { var p = new Date(state.calY, state.calM - 1, 1); state.calY = p.getFullYear(); state.calM = p.getMonth(); render(); }
+    else if (a === "cal-next") { var n = new Date(state.calY, state.calM + 1, 1); state.calY = n.getFullYear(); state.calM = n.getMonth(); render(); }
+    else if (a === "cal-today") { var d = new Date(); state.calY = d.getFullYear(); state.calM = d.getMonth(); render(); }
+  });
+  document.addEventListener("change", function (e) {
+    var el = e.target;
+    if (el.dataset && el.dataset.role === "cur") { state.cur = el.value; localStorage.setItem("eb:cur", state.cur); render(); }
+    else if (el.dataset && el.dataset.role === "filterAsset") { state.filterAsset = el.value; render(); }
+    else if (el.dataset && el.dataset.role === "filterSetup") { state.filterSetup = el.value; render(); }
+    else if (el.dataset && el.dataset.role === "map") { imp.map[el.dataset.key] = el.value; renderImport(); }
+    else if (el.dataset && el.dataset.role === "csvfile") {
+      var file = el.files && el.files[0]; if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        var rows = parseCSV(String(reader.result));
+        if (rows.length < 2) { var er = document.getElementById("csvErr"); if (er) er.textContent = "Geen rijen gevonden in dit bestand."; return; }
+        var cols = rows[0].map(function (c) { return c.trim(); });
+        var data = rows.slice(1).map(function (r) { var o = {}; cols.forEach(function (c, idx) { o[c] = r[idx]; }); return o; });
+        imp = { cols: cols, rows: data, map: guessMap(cols) };
+        renderImport();
+      };
+      reader.readAsText(file);
+    }
+  });
+  document.addEventListener("input", function (e) { if (e.target.closest && e.target.closest("#tradeModal")) updateLive(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && editId !== undefined) closeModal(); if (e.key === "Escape" && imp !== null) closeModal(); });
+
+  render();
+})();
+
+</script></body></html>
