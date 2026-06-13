@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<!--
+  ============================================================
+   FASE 1 - JE EERSTE LIVE BITCOIN-KOERS
+  ============================================================
+
+  Hoe gebruik je dit bestand?
+  1. Sla het op je computer op (dat heb je al gedaan).
+  2. Dubbelklik erop. Het opent vanzelf in je browser.
+  3. Klaar! Je ziet de live koers, die elke 10 seconden ververst.
+
+  Wil je iets aanpassen? Open dit bestand in een editor zoals
+  Visual Studio Code (gratis). Alles wat je kunt veranderen,
+  staat uitgelegd in de groene comment-tekst zoals deze.
+
+  Dit bestand bestaat uit 3 delen, en dat is precies wat je
+  in Fase 0 en 1 leert:
+    - HTML  = de bouwstenen (wat er op de pagina staat)
+    - CSS   = de vormgeving  (hoe het eruitziet)
+    - JS    = de logica      (de koers ophalen en tonen)
+-->
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Bitcoin-koers</title>
+
+  <!-- We lenen twee lettertypes van Google. Eentje voor gewone
+       tekst (Inter) en eentje voor de cijfers (Space Mono), zodat
+       de koers er strak en 'digitaal' uitziet zoals op een beurs. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- ========================================================
+       DEEL 2: CSS - DE VORMGEVING
+       Alles tussen <style> en </style> bepaalt hoe de pagina
+       eruitziet: kleuren, lettertypes, posities.
+       ======================================================== -->
+  <style>
+    /* Hier bovenaan zetten we onze kleuren als 'variabelen'.
+       Wil je een andere kleur? Verander alleen de waarde hier,
+       en hij past zich overal op de pagina aan. Handig! */
+    :root {
+      --achtergrond:   #0E1525;  /* diep nachtblauw */
+      --kaart:         #18213A;  /* iets lichter blauw voor de kaart */
+      --rand:          #263250;
+      --tekst:         #E8ECF5;  /* bijna wit */
+      --tekst-zacht:   #8A93A8;  /* grijs voor minder belangrijke tekst */
+      --bitcoin:       #F7931A;  /* de echte Bitcoin-oranje */
+      --omhoog:        #16C784;  /* groen als de koers stijgt */
+      --omlaag:        #EA3943;  /* rood als de koers daalt */
+    }
+
+    /* '*' betekent: pas dit toe op ALLE elementen.
+       We zetten standaard-marges op nul zodat we zelf de controle houden. */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--achtergrond);
+      color: var(--tekst);
+      font-family: 'Inter', sans-serif;
+      /* De volgende regels centreren de kaart mooi in het midden: */
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    /* De kaart in het midden waar alles in staat */
+    .kaart {
+      background-color: var(--kaart);
+      border: 1px solid var(--rand);
+      border-radius: 20px;
+      padding: 40px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Het balkje bovenin met het Bitcoin-logo en het 'LIVE' lampje */
+    .kop {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+
+    .munt {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Het ronde oranje Bitcoin-icoontje met een B erin */
+    .logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: var(--bitcoin);
+      color: #fff;
+      font-weight: 700;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .munt-naam   { font-weight: 600; font-size: 16px; }
+    .munt-ticker { color: var(--tekst-zacht); font-size: 13px; }
+
+    /* Het 'LIVE' lampje rechtsboven */
+    .live {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: var(--omhoog);
+    }
+    .stip {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--omhoog);
+      /* Dit laat het stipje zachtjes 'kloppen', als een hartslag.
+         De animatie zelf staat onderaan bij @keyframes. */
+      animation: kloppen 1.6s ease-in-out infinite;
+    }
+
+    /* DE KOERS - het grote getal, het pronkstuk van de pagina */
+    .koers {
+      font-family: 'Space Mono', monospace;
+      font-size: 52px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      /* Een korte kleur-flits bij elke update (groen of rood).
+         Welke kleur, dat regelt de JavaScript hieronder. */
+      transition: color 0.6s ease;
+    }
+
+    /* Het regeltje onder de koers: de 24-uurs verandering */
+    .verandering {
+      margin-top: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      font-family: 'Space Mono', monospace;
+    }
+    /* Deze twee klassen kleuren de tekst groen of rood.
+       JavaScript hangt de juiste klasse aan het element. */
+    .positief { color: var(--omhoog); }
+    .negatief { color: var(--omlaag); }
+
+    /* Het kleine regeltje onderaan: wanneer voor het laatst ververst */
+    .voet {
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid var(--rand);
+      font-size: 12px;
+      color: var(--tekst-zacht);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* De 'kloppen'-animatie voor het LIVE-stipje */
+    @keyframes kloppen {
+      0%, 100% { opacity: 1;   transform: scale(1);   }
+      50%      { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    /* Vriendelijk voor mensen die liever geen beweging zien:
+       dan zetten we de animatie uit. */
+    @media (prefers-reduced-motion: reduce) {
+      .stip { animation: none; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ========================================================
+       DEEL 1: HTML - DE BOUWSTENEN
+       Dit is WAT er op de pagina staat. De cijfers zijn nu nog
+       leeg of 'laden...'; de JavaScript hieronder vult ze straks
+       met de echte, live waardes.
+       ======================================================== -->
+  <div class="kaart">
+
+    <div class="kop">
+      <div class="munt">
+        <div class="logo">B</div>
+        <div>
+          <div class="munt-naam">Bitcoin</div>
+          <div class="munt-ticker">BTC / USD</div>
+        </div>
+      </div>
+      <div class="live">
+        <span class="stip"></span>
+        LIVE
+      </div>
+    </div>
+
+    <!-- id="koers" en id="verandering" zijn 'naamlabels'.
+         Daarmee kan de JavaScript deze plekken straks terugvinden
+         en de echte cijfers erin zetten. -->
+    <div class="koers" id="koers">laden...</div>
+    <div class="verandering" id="verandering">&nbsp;</div>
+
+    <div class="voet">
+      <span>Bron: CoinGecko</span>
+      <span id="bijgewerkt">&nbsp;</span>
+    </div>
+
+  </div>
+
+  <!-- ========================================================
+       DEEL 3: JAVASCRIPT - DE LOGICA
+       Dit is het 'brein'. Het haalt de echte koers van internet
+       en zet die op de pagina. Lees het rustig van boven naar
+       beneden; ik leg elke stap uit.
+       ======================================================== -->
+  <script>
+
+    // STAP 1 - Het internetadres waar we de koers vandaan halen.
+    // Dit heet een 'API': een adres dat je gegevens teruggeeft.
+    // We vragen aan CoinGecko: geef me de prijs van bitcoin in dollars,
+    // plus hoeveel die in 24 uur is veranderd.
+    const API_ADRES = "https://api.coingecko.com/api/v3/simple/price"
+                    + "?ids=bitcoin&vs_currencies=usd&include_24hr_change=true";
+
+    // STAP 2 - We pakken de plekken op de pagina vast die we gaan vullen.
+    // 'document.getElementById' zoekt het element met dat naamlabel op.
+    const koersEl       = document.getElementById("koers");
+    const veranderingEl = document.getElementById("verandering");
+    const bijgewerktEl  = document.getElementById("bijgewerkt");
+
+    // We onthouden de vorige prijs, zodat we kunnen zien of de koers
+    // omhoog of omlaag ging en de juiste kleur kunnen flitsen.
+    let vorigePrijs = null;
+
+    // STAP 3 - De hoofd-functie: haal de koers op en toon hem.
+    // Het woordje 'async' betekent: deze functie mag even wachten
+    // op het internet zonder de rest van de pagina te blokkeren.
+    async function haalKoersOp() {
+      try {
+        // 'fetch' gaat naar het API-adres en haalt de gegevens op.
+        // 'await' = wacht tot het antwoord binnen is.
+        const antwoord = await fetch(API_ADRES);
+        const gegevens = await antwoord.json(); // zet het om naar bruikbare data
+
+        // Uit de gegevens halen we de twee getallen die we nodig hebben.
+        const prijs       = gegevens.bitcoin.usd;
+        const verandering = gegevens.bitcoin.usd_24h_change;
+
+        // STAP 4 - De prijs netjes opmaken met dollarteken en komma's,
+        // bijvoorbeeld: $67,432
+        koersEl.textContent = "$" + prijs.toLocaleString("en-US", {
+          maximumFractionDigits: 0
+        });
+
+        // STAP 5 - Een korte kleur-flits: groen als de prijs steeg
+        // sinds de vorige keer, rood als hij daalde.
+        if (vorigePrijs !== null) {
+          if (prijs > vorigePrijs) flits(getCSS("--omhoog"));
+          else if (prijs < vorigePrijs) flits(getCSS("--omlaag"));
+        }
+        vorigePrijs = prijs;
+
+        // STAP 6 - De 24-uurs verandering tonen, met een + of - ervoor
+        // en in groen of rood.
+        const tekenVerandering = verandering >= 0 ? "+" : "";
+        veranderingEl.textContent =
+          tekenVerandering + verandering.toFixed(2) + "% (24u)";
+        veranderingEl.className = "verandering "
+          + (verandering >= 0 ? "positief" : "negatief");
+
+        // STAP 7 - Noteer hoe laat we voor het laatst ververst hebben.
+        const nu = new Date();
+        bijgewerktEl.textContent = "Bijgewerkt om "
+          + nu.toLocaleTimeString("nl-NL");
+
+      } catch (fout) {
+        // Gaat er iets mis (bijv. geen internet, of CoinGecko is even
+        // druk)? Dan tonen we een nette boodschap in plaats van te crashen.
+        koersEl.textContent = "Even niet bereikbaar";
+        veranderingEl.textContent = "Probeer het zo nog eens";
+        veranderingEl.className = "verandering";
+        console.log("Er ging iets mis bij het ophalen:", fout);
+      }
+    }
+
+    // Klein hulpje: laat de koers kort oplichten in een kleur.
+    function flits(kleur) {
+      koersEl.style.color = kleur;
+      // Na 600 milliseconden weer terug naar de gewone witte kleur.
+      setTimeout(function () {
+        koersEl.style.color = getCSS("--tekst");
+      }, 600);
+    }
+
+    // Klein hulpje: haalt een van onze kleuren uit de CSS-variabelen op.
+    function getCSS(naam) {
+      return getComputedStyle(document.documentElement)
+        .getPropertyValue(naam).trim();
+    }
+
+    // STAP 8 - Aan de slag!
+    // Eerst meteen één keer ophalen, zodat je niet hoeft te wachten...
+    haalKoersOp();
+    // ...en daarna automatisch elke 10 seconden opnieuw.
+    // (10000 milliseconden = 10 seconden)
+    setInterval(haalKoersOp, 10000);
+
+  </script>
+</body>
+</html>
