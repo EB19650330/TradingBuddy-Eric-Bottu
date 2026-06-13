@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<!--
+  ============================================================
+   FASE 3 - KLIK OP EEN MUNT, ZIE EEN GRAFIEK
+  ============================================================
+
+  Dit bouwt voort op je lijst uit fase 2.
+  Openen gaat hetzelfde: dubbelklikken, draait in je browser.
+  (Je hebt wel internet nodig: de grafiek-bouwsteen Chart.js
+   en de lettertypes worden van internet geladen.)
+
+  WAT IS ER NIEUW TEN OPZICHTE VAN FASE 2?
+  Drie dingen, gemarkeerd met "NIEUW" in de comments:
+
+  1. KLIKBARE rijen. We luisteren naar een klik en reageren erop.
+
+  2. GESCHIEDENIS ophalen. Niet één prijs, maar de hele koerslijn
+     van bijvoorbeeld de afgelopen 24 uur (honderden punten).
+
+  3. Een GRAFIEK tekenen met Chart.js - een kant-en-klare bouwsteen
+     die we van internet lenen (zie de <script> regel in de <head>).
+
+  De lijst zelf, het ophalen, de kleuren: dat ken je al uit fase 2.
+-->
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live koersen met grafiek</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- NIEUW (3): hier lenen we Chart.js van internet. Eén regel,
+       en daarna kunnen we er grafieken mee tekenen. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      --achtergrond:   #0E1525;
+      --kaart:         #18213A;
+      --rand:          #263250;
+      --tekst:         #E8ECF5;
+      --tekst-zacht:   #8A93A8;
+      --omhoog:        #16C784;
+      --omlaag:        #EA3943;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background-color: var(--achtergrond);
+      color: var(--tekst);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    .kaart {
+      background-color: var(--kaart);
+      border: 1px solid var(--rand);
+      border-radius: 20px;
+      padding: 28px;
+      width: 100%;
+      max-width: 460px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    .kop {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .titel { font-size: 20px; font-weight: 700; }
+
+    .live {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+      color: var(--omhoog);
+    }
+    .stip {
+      width: 8px; height: 8px; border-radius: 50%;
+      background-color: var(--omhoog);
+      animation: kloppen 1.6s ease-in-out infinite;
+    }
+
+    .subtitel { font-size: 13px; color: var(--tekst-zacht); margin-bottom: 20px; }
+
+    .rij {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 0;
+      border-top: 1px solid var(--rand);
+      /* NIEUW (1): de muisaanwijzer wordt een handje, en de rij
+         licht zachtjes op als je eroverheen gaat. Zo zie je dat
+         je erop kunt klikken. */
+      cursor: pointer;
+      border-radius: 10px;
+      transition: background-color 0.15s ease;
+    }
+    .rij:hover { background-color: rgba(255,255,255,0.04); }
+    .rij:first-of-type { border-top: none; }
+
+    .logo {
+      width: 38px; height: 38px; border-radius: 50%;
+      color: #fff; font-weight: 700; font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-left: 6px;
+    }
+    .naam-blok { flex: 1; }
+    .naam   { font-weight: 600; font-size: 15px; }
+    .ticker { color: var(--tekst-zacht); font-size: 12px; }
+
+    .prijs-blok { text-align: right; margin-right: 6px; }
+    .prijs {
+      font-family: 'Space Mono', monospace; font-weight: 700; font-size: 17px;
+      transition: color 0.6s ease;
+    }
+    .verandering { font-family: 'Space Mono', monospace; font-size: 13px; margin-top: 2px; }
+    .positief { color: var(--omhoog); }
+    .negatief { color: var(--omlaag); }
+
+    .voet {
+      margin-top: 20px; padding-top: 16px;
+      border-top: 1px solid var(--rand);
+      font-size: 12px; color: var(--tekst-zacht);
+      display: flex; justify-content: space-between;
+    }
+
+    /* ====== NIEUW: de opmaak voor het GRAFIEK-scherm ====== */
+    /* Standaard verbergen we het detailscherm. Het verschijnt pas
+       als je op een munt klikt. */
+    #detail { display: none; }
+
+    .terug {
+      background: none; border: none; color: var(--tekst-zacht);
+      font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500;
+      cursor: pointer; padding: 4px 0; margin-bottom: 16px;
+    }
+    .terug:hover { color: var(--tekst); }
+
+    .detail-kop { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+    .detail-prijs {
+      font-family: 'Space Mono', monospace; font-weight: 700; font-size: 30px;
+      margin-bottom: 2px;
+    }
+    .detail-ver { font-family: 'Space Mono', monospace; font-size: 14px; }
+
+    /* De plek waar de grafiek getekend wordt */
+    .grafiek-vak { height: 220px; margin: 16px 0; }
+
+    /* De knoppen 24u / 7d / 30d */
+    .tijdvakken { display: flex; gap: 8px; margin-top: 8px; }
+    .tijdknop {
+      flex: 1; padding: 8px 0;
+      background-color: var(--achtergrond);
+      border: 1px solid var(--rand); border-radius: 8px;
+      color: var(--tekst-zacht);
+      font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s ease;
+    }
+    .tijdknop:hover { color: var(--tekst); }
+    .tijdknop.actief {
+      background-color: var(--rand);
+      color: var(--tekst);
+      border-color: var(--tekst-zacht);
+    }
+
+    @keyframes kloppen {
+      0%, 100% { opacity: 1;   transform: scale(1);   }
+      50%      { opacity: 0.4; transform: scale(0.8); }
+    }
+    @media (prefers-reduced-motion: reduce) { .stip { animation: none; } }
+  </style>
+</head>
+
+<body>
+
+  <div class="kaart">
+
+    <!-- ===== SCHERM 1: de lijst (zoals fase 2) ===== -->
+    <div id="lijstscherm">
+      <div class="kop">
+        <div class="titel">Markten</div>
+        <div class="live"><span class="stip"></span>LIVE</div>
+      </div>
+      <div class="subtitel">Tik op een munt voor de grafiek</div>
+      <div id="lijst"></div>
+      <div class="voet">
+        <span>Bron: CoinGecko</span>
+        <span id="bijgewerkt">&nbsp;</span>
+      </div>
+    </div>
+
+    <!-- ===== SCHERM 2: de grafiek (NIEUW) ===== -->
+    <!-- Dit is standaard verborgen (zie #detail in de CSS). -->
+    <div id="detail">
+      <button class="terug" id="terugknop">&larr; Terug naar markten</button>
+
+      <div class="detail-kop">
+        <div class="logo" id="detail-logo">B</div>
+        <div>
+          <div class="naam" id="detail-naam">Bitcoin</div>
+          <div class="ticker" id="detail-ticker">BTC / USD</div>
+        </div>
+      </div>
+
+      <div class="detail-prijs" id="detail-prijs">...</div>
+      <div class="detail-ver" id="detail-ver">&nbsp;</div>
+
+      <div class="grafiek-vak">
+        <!-- Op dit 'canvas' tekent Chart.js straks de lijn. -->
+        <canvas id="grafiek"></canvas>
+      </div>
+
+      <div class="tijdvakken">
+        <button class="tijdknop actief" data-dagen="1">24u</button>
+        <button class="tijdknop" data-dagen="7">7d</button>
+        <button class="tijdknop" data-dagen="30">30d</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+
+    // ===== De muntenlijst (precies als fase 2) =====
+    const MUNTEN = [
+      { id: "bitcoin",  naam: "Bitcoin",  ticker: "BTC",  letter: "B", kleur: "#F7931A" },
+      { id: "ethereum", naam: "Ethereum", ticker: "ETH",  letter: "E", kleur: "#627EEA" },
+      { id: "solana",   naam: "Solana",   ticker: "SOL",  letter: "S", kleur: "#14B88A" },
+      { id: "ripple",   naam: "XRP",      ticker: "XRP",  letter: "X", kleur: "#23A0D8" },
+      { id: "cardano",  naam: "Cardano",  ticker: "ADA",  letter: "A", kleur: "#3468D1" },
+      { id: "dogecoin", naam: "Dogecoin", ticker: "DOGE", letter: "D", kleur: "#C2A633" },
+    ];
+
+    const lijstEl      = document.getElementById("lijst");
+    const bijgewerktEl = document.getElementById("bijgewerkt");
+    const vorigePrijzen = {};
+
+    // Plekken op het grafiek-scherm vastpakken.
+    const lijstscherm = document.getElementById("lijstscherm");
+    const detail      = document.getElementById("detail");
+
+    // We onthouden welke munt nu open staat en welk tijdvak gekozen is.
+    let huidigeMunt = null;
+    let huidigeDagen = 1;
+    let grafiek = null; // hierin bewaren we de getekende grafiek
+
+    // ===== De lijst opbouwen (als fase 2) =====
+    function bouwRijen() {
+      MUNTEN.forEach(function (munt) {
+        const rij = document.createElement("div");
+        rij.className = "rij";
+        rij.innerHTML =
+          '<div class="logo" style="background-color:' + munt.kleur + '">' + munt.letter + '</div>' +
+          '<div class="naam-blok">' +
+            '<div class="naam">' + munt.naam + '</div>' +
+            '<div class="ticker">' + munt.ticker + ' / USD</div>' +
+          '</div>' +
+          '<div class="prijs-blok">' +
+            '<div class="prijs" id="prijs-' + munt.id + '">...</div>' +
+            '<div class="verandering" id="ver-' + munt.id + '">&nbsp;</div>' +
+          '</div>';
+
+        // NIEUW (1): luister naar een klik op deze rij.
+        // Klikt iemand? Dan openen we de grafiek voor deze munt.
+        rij.addEventListener("click", function () {
+          openGrafiek(munt);
+        });
+
+        lijstEl.appendChild(rij);
+      });
+    }
+
+    // ===== Live koersen ophalen (als fase 2) =====
+    async function haalKoersenOp() {
+      try {
+        const ids = MUNTEN.map(function (m) { return m.id; }).join(",");
+        const adres = "https://api.coingecko.com/api/v3/simple/price"
+                    + "?ids=" + ids + "&vs_currencies=usd&include_24hr_change=true";
+        const antwoord = await fetch(adres);
+        const gegevens = await antwoord.json();
+
+        MUNTEN.forEach(function (munt) {
+          const data = gegevens[munt.id];
+          if (!data) return;
+          const prijs = data.usd;
+          const verandering = data.usd_24h_change;
+          const prijsEl = document.getElementById("prijs-" + munt.id);
+          const verEl   = document.getElementById("ver-" + munt.id);
+
+          prijsEl.textContent = formatPrijs(prijs);
+
+          const vorige = vorigePrijzen[munt.id];
+          if (vorige !== undefined) {
+            if (prijs > vorige) flits(prijsEl, "var(--omhoog)");
+            else if (prijs < vorige) flits(prijsEl, "var(--omlaag)");
+          }
+          vorigePrijzen[munt.id] = prijs;
+
+          const teken = verandering >= 0 ? "+" : "";
+          verEl.textContent = teken + verandering.toFixed(2) + "%";
+          verEl.className = "verandering " + (verandering >= 0 ? "positief" : "negatief");
+        });
+
+        const nu = new Date();
+        bijgewerktEl.textContent = "Bijgewerkt om " + nu.toLocaleTimeString("nl-NL");
+      } catch (fout) {
+        bijgewerktEl.textContent = "Even niet bereikbaar...";
+        console.log("Er ging iets mis:", fout);
+      }
+    }
+
+    // ========================================================
+    //  NIEUW: het grafiek-scherm openen voor een munt.
+    // ========================================================
+    function openGrafiek(munt) {
+      huidigeMunt = munt;
+
+      // Vul de kop van het detailscherm met deze munt.
+      const logoEl = document.getElementById("detail-logo");
+      logoEl.textContent = munt.letter;
+      logoEl.style.backgroundColor = munt.kleur;
+      document.getElementById("detail-naam").textContent = munt.naam;
+      document.getElementById("detail-ticker").textContent = munt.ticker + " / USD";
+
+      // Verberg de lijst, toon de grafiek.
+      lijstscherm.style.display = "none";
+      detail.style.display = "block";
+
+      // Teken de grafiek (standaard 24 uur).
+      zetTijdvak(1);
+    }
+
+    // Terug naar de lijst.
+    document.getElementById("terugknop").addEventListener("click", function () {
+      detail.style.display = "none";
+      lijstscherm.style.display = "block";
+    });
+
+    // Een tijdvak kiezen (1 / 7 / 30 dagen) en de grafiek opnieuw tekenen.
+    function zetTijdvak(dagen) {
+      huidigeDagen = dagen;
+      // Markeer de gekozen knop als 'actief'.
+      document.querySelectorAll(".tijdknop").forEach(function (knop) {
+        knop.classList.toggle("actief", Number(knop.dataset.dagen) === dagen);
+      });
+      tekenGrafiek();
+    }
+
+    // Koppel de tijdvak-knoppen aan de functie hierboven.
+    document.querySelectorAll(".tijdknop").forEach(function (knop) {
+      knop.addEventListener("click", function () {
+        zetTijdvak(Number(knop.dataset.dagen));
+      });
+    });
+
+    // ========================================================
+    //  NIEUW (2 + 3): geschiedenis ophalen en de grafiek tekenen.
+    // ========================================================
+    async function tekenGrafiek() {
+      const munt = huidigeMunt;
+      const prijsEl = document.getElementById("detail-prijs");
+      const verEl   = document.getElementById("detail-ver");
+      prijsEl.textContent = "laden...";
+      verEl.textContent = "";
+
+      try {
+        // NIEUW (2): een ander adres dat de hele koerslijn teruggeeft.
+        // 'days=1' geeft de afgelopen 24 uur, 'days=7' een week, enz.
+        const adres = "https://api.coingecko.com/api/v3/coins/" + munt.id
+                    + "/market_chart?vs_currency=usd&days=" + huidigeDagen;
+        const antwoord = await fetch(adres);
+        const gegevens = await antwoord.json();
+
+        // De data ziet er zo uit: prices = [ [tijd, prijs], [tijd, prijs], ... ]
+        // We splitsen dat in twee aparte lijsten: tijden en prijzen.
+        const punten = gegevens.prices;
+        const tijden  = punten.map(function (p) { return formatTijd(p[0], huidigeDagen); });
+        const prijzen = punten.map(function (p) { return p[1]; });
+
+        // Bereken of de munt over deze periode steeg of daalde.
+        const eerste = prijzen[0];
+        const laatste = prijzen[prijzen.length - 1];
+        const veranderingPct = ((laatste - eerste) / eerste) * 100;
+        const steeg = laatste >= eerste;
+        const lijnkleur = steeg ? "#16C784" : "#EA3943";
+
+        // Toon de actuele prijs en de verandering over de periode.
+        prijsEl.textContent = formatPrijs(laatste);
+        const teken = veranderingPct >= 0 ? "+" : "";
+        verEl.textContent = teken + veranderingPct.toFixed(2) + "% over deze periode";
+        verEl.className = "detail-ver " + (steeg ? "positief" : "negatief");
+
+        // NIEUW (3): de grafiek tekenen met Chart.js.
+        // Stond er al een oude grafiek? Eerst opruimen, anders
+        // stapelen ze op elkaar.
+        if (grafiek) grafiek.destroy();
+
+        const canvas = document.getElementById("grafiek");
+        grafiek = new Chart(canvas, {
+          type: "line",          // een lijn-grafiek
+          data: {
+            labels: tijden,       // de tijden onderaan (x-as)
+            datasets: [{
+              data: prijzen,      // de prijzen (y-as)
+              borderColor: lijnkleur,
+              borderWidth: 2,
+              fill: true,
+              backgroundColor: steeg
+                ? "rgba(22,199,132,0.08)"
+                : "rgba(234,57,67,0.08)",
+              pointRadius: 0,     // geen stippen, alleen een vloeiende lijn
+              tension: 0.3        // maakt de lijn lekker rond
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } }, // geen legenda nodig
+            scales: {
+              x: {
+                ticks: { color: "#8A93A8", maxTicksLimit: 5, font: { size: 10 } },
+                grid: { display: false }
+              },
+              y: {
+                ticks: { color: "#8A93A8", font: { size: 10 } },
+                grid: { color: "rgba(255,255,255,0.05)" }
+              }
+            }
+          }
+        });
+
+      } catch (fout) {
+        prijsEl.textContent = "Grafiek niet beschikbaar";
+        console.log("Er ging iets mis bij de grafiek:", fout);
+      }
+    }
+
+    // ===== Hulpjes =====
+
+    // Prijs netjes opmaken (dure munten met komma's, goedkope met decimalen).
+    function formatPrijs(prijs) {
+      if (prijs >= 1) {
+        return "$" + prijs.toLocaleString("en-US", { maximumFractionDigits: 0 });
+      }
+      return "$" + prijs.toFixed(4);
+    }
+
+    // Een tijdstempel omzetten naar leesbare tekst.
+    // Bij 24u tonen we het tijdstip, bij meer dagen de datum.
+    function formatTijd(tijdstempel, dagen) {
+      const d = new Date(tijdstempel);
+      if (dagen === 1) {
+        return d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+      }
+      return d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
+    }
+
+    function flits(element, kleur) {
+      element.style.color = kleur;
+      setTimeout(function () { element.style.color = "var(--tekst)"; }, 600);
+    }
+
+    // ===== Aan de slag =====
+    bouwRijen();
+    haalKoersenOp();
+    setInterval(haalKoersenOp, 10000);
+
+  </script>
+</body>
+</html>
