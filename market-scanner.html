@@ -1,0 +1,2881 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Market Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg:#1a1d29; --panel:#232635; --panel2:#2a2e3f; --border:#3a3f52;
+    --text:#eceef2; --muted:#9195a3; --green:#2dd4a8; --green-bg:rgba(45,212,168,0.14);
+    --red:#f0645f; --red-bg:rgba(240,100,95,0.14); --accent:#6b96f2; --accent-bg:rgba(107,150,242,0.14);
+    --mono: 'SF Mono', 'Cascadia Code', Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  button, input, select { font-family: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--panel2); border-radius: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  .app { max-width: 1360px; margin: 0 auto; padding: 0 0 64px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* ---------- header ---------- */
+  .app-header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 20px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+  .brand { display: flex; align-items: flex-start; gap: 14px; }
+  .brand-mark { font-size: 28px; color: var(--accent); line-height: 1; margin-top: 2px; }
+  .brand-logo { height: 44px; width: auto; display: block; }
+  .brand h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
+  .brand p { margin: 4px 0 0; color: var(--muted); font-size: 13.5px; }
+
+  .header-badges { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .badge { display: flex; align-items: center; gap: 8px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+  .badge .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  .badge .value { font-family: var(--mono); font-weight: 600; color: var(--text); }
+  .badge .pill { border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
+
+  /* ---------- tabs ---------- */
+  .tab-row { display: flex; gap: 6px; border-bottom: 1px solid var(--border); background: var(--panel); padding: 0 24px; }
+  .tab-btn { background: transparent; border: none; color: var(--muted); padding: 14px 4px; font-size: 14px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; margin-right: 18px; }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.tab-active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ---------- layout ---------- */
+  .layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; padding: 0 24px; }
+  .sidebar { display: flex; flex-direction: column; gap: 20px; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  /* ---------- panel ---------- */
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .panel-header { margin-bottom: 14px; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .panel-header h2 { margin: 0; font-size: 15px; font-weight: 700; color: var(--text); }
+  .panel-subtitle { display: block; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+  .empty-hint { color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+
+  /* ---------- controls ---------- */
+  .control-group { margin-bottom: 16px; }
+  .control-group label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 8px; font-weight: 600; }
+  .control-group .sub-note { display: block; font-size: 11.5px; color: var(--muted); margin-top: 6px; font-style: italic; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { background: var(--panel2); border: 1px solid var(--border); color: var(--text); border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer; transition: border-color 0.15s, color 0.15s, background 0.15s; }
+  .chip:hover { border-color: var(--accent); }
+  .chip-active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .control-group input[type="text"], .control-group input[type="number"] { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: var(--text); font-size: 13.5px; }
+
+  /* ---------- buttons ---------- */
+  .btn-primary { width: 100%; background: var(--accent); color: #10131c; border: none; border-radius: 8px; padding: 11px 16px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .btn-primary:hover:not(:disabled) { background: #85a8f5; }
+  .btn-primary:disabled { background: var(--panel2); color: var(--muted); cursor: not-allowed; }
+  .btn-secondary { background: var(--panel2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 9px 14px; font-size: 13.5px; cursor: pointer; }
+  .btn-secondary:hover:not(:disabled) { border-color: var(--accent); }
+  .btn-secondary:disabled { color: var(--muted); cursor: not-allowed; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer; }
+  .btn-ghost:hover { color: var(--text); border-color: var(--accent); }
+  .icon-btn { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 4px 6px; }
+  .icon-btn:hover { color: var(--red); }
+  .progress-hint { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); font-family: var(--mono); }
+
+  /* ---------- strategy builder ---------- */
+  .preset-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .preset-chip { background: var(--accent-bg); border: 1px solid var(--accent); color: var(--accent); border-radius: 999px; padding: 6px 12px; font-size: 12.5px; cursor: pointer; }
+  .preset-chip:hover { background: rgba(107,150,242,0.24); }
+
+  .conditions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+  .condition-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
+  .condition-row select, .condition-row input { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 6px 8px; font-size: 13px; }
+  .period-input { width: 56px; }
+  .value-input { width: 84px; }
+  .macd-params, .extra-params { display: flex; gap: 4px; }
+  .macd-params input, .extra-params input { width: 44px; }
+  .hint { font-size: 11.5px; color: var(--muted); font-style: italic; }
+
+  .side-toggle { display: flex; gap: 6px; margin-bottom: 14px; }
+  .side-btn { flex: 1; border: 1px solid var(--border); background: var(--panel2); color: var(--muted); border-radius: 8px; padding: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .side-btn.side-long-active { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+  .side-btn.side-short-active { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+
+  .strategy-save { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px; }
+  .strategy-save input[type="text"] { flex: 1; min-width: 140px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: var(--text); font-size: 13.5px; }
+  .strategy-save select { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 8px 10px; font-size: 13px; }
+
+  /* ---------- strategy checklist ---------- */
+  .strat-check-row { display: flex; align-items: center; gap: 9px; padding: 7px 4px; border-bottom: 1px solid var(--border); }
+  .strat-check-row:last-child { border-bottom: none; }
+  .strat-check-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+  .strat-name-btn { background: none; border: none; padding: 0; font-size: 13.5px; color: var(--text); cursor: pointer; text-align: left; flex: 1; }
+  .strat-name-btn:hover { color: var(--accent); text-decoration: underline; }
+  .strat-kind-badge { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; border-radius: 999px; padding: 1px 7px; flex-shrink: 0; }
+  .strat-kind-builtin { background: var(--accent-bg); color: var(--accent); }
+  .strat-kind-custom { background: rgba(168,120,240,0.16); color: #c39bf7; }
+  .strat-del-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 4px; flex-shrink: 0; }
+  .strat-del-btn:hover { color: var(--red); }
+
+  /* ---------- indicator library tree ---------- */
+  .indicator-tree { border: 1px solid var(--border); border-radius: 8px; padding: 10px 8px; background: var(--panel2); max-height: 340px; overflow-y: auto; }
+  .tree-cat-header, .tree-group-header { display: flex; align-items: center; gap: 6px; background: none; border: none; width: 100%; text-align: left; padding: 6px 4px; font-size: 13.5px; font-weight: 600; color: var(--text); cursor: pointer; border-radius: 5px; }
+  .tree-cat-header:hover, .tree-group-header:hover { background: var(--bg); }
+  .tree-group-header { font-size: 13px; font-weight: 500; color: var(--muted); }
+  .tree-chevron { display: inline-block; width: 12px; font-size: 11px; color: var(--muted); transition: transform .12s; }
+  .tree-cat-body { margin-left: 10px; padding-left: 10px; border-left: 1px solid var(--border); }
+  .tree-group-body { margin-left: 10px; padding-left: 12px; border-left: 1px solid var(--border); display: flex; flex-direction: column; }
+  .tree-leaf-btn { background: none; border: none; text-align: left; padding: 5px 6px; font-size: 13px; color: var(--accent); cursor: pointer; border-radius: 5px; }
+  .tree-leaf-btn:hover { background: var(--accent-bg); }
+  .tree-leaf-btn:before { content: "+ "; color: var(--muted); }
+
+  /* ---------- results ---------- */
+  .results-panel { min-height: 420px; }
+  .error-banner { background: var(--red-bg); border: 1px solid var(--red); color: var(--red); border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 14px; }
+  .error-banner p { margin: 4px 0; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  thead th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); border-bottom: 1px solid var(--border); padding: 8px 10px; font-weight: 700; }
+  tbody td { padding: 10px 10px; border-bottom: 1px solid var(--border); }
+  tbody tr:hover { background: var(--panel2); }
+  .mono { font-family: var(--mono); }
+  .muted { color: var(--muted); }
+  .strong { font-weight: 600; color: var(--text); }
+  .positive { color: var(--green); }
+  .negative { color: var(--red); }
+  .link-btn { color: var(--accent); text-decoration: none; font-size: 12.5px; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; }
+  .link-btn:hover { background: var(--accent-bg); border-color: var(--accent); }
+  .link-icons { display: flex; gap: 4px; }
+  .market-badge { display: inline-block; border-radius: 999px; padding: 2px 9px; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+  .market-spot { background: var(--accent-bg); color: var(--accent); }
+  .market-futures { background: rgba(240,180,80,0.16); color: #f0b450; }
+  .side-badge { display: inline-block; border-radius: 999px; padding: 2px 9px; font-size: 11.5px; font-weight: 600; }
+  .side-badge-long { background: var(--green-bg); color: var(--green); }
+  .side-badge-short { background: var(--red-bg); color: var(--red); }
+
+  /* ---------- market climate ---------- */
+  .climate-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .climate-card { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .climate-card h3 { margin: 0 0 10px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .climate-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 13.5px; }
+  .climate-row:last-child { border-bottom: none; }
+  .climate-chart-wrap { position: relative; }
+  .climate-legend { display: flex; gap: 14px; margin-bottom: 8px; font-size: 12px; color: var(--muted); }
+  .climate-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .climate-legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .climate-tooltip { position: absolute; pointer-events: none; background: #10131c; color: var(--text); border-radius: 8px; padding: 8px 10px; font-size: 12px; font-family: var(--mono); line-height: 1.5; box-shadow: 0 4px 12px rgba(0,0,0,.4); white-space: nowrap; z-index: 5; display: none; }
+  .climate-tooltip .tt-date { color: var(--muted); font-family: -apple-system, sans-serif; margin-bottom: 3px; }
+
+  /* ---------- gainers/losers ---------- */
+  .gl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 700px) { .gl-grid { grid-template-columns: 1fr; } }
+
+  /* ---------- footer ---------- */
+  .app-footer { border-top: 1px solid var(--border); padding: 16px 24px 0; color: var(--muted); font-size: 12px; }
+  .app-footer p { margin: 0; }
+  .app-footer .copyright { margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="app-header">
+    <div class="brand">
+      <img class="brand-logo" src="data:image/png;base64,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" alt="Eric Bottu logo" />
+      <div>
+        <h1>Market Scanner</h1>
+        <p>Build a strategy, scan Binance, MEXC, Bitvavo, OKX and Hyperliquid, find your entries.</p>
+      </div>
+    </div>
+    <div class="header-badges" id="headerBadges"></div>
+  </header>
+
+  <nav class="tab-row" id="tabRow"></nav>
+
+  <main class="layout">
+    <div class="sidebar">
+      <section class="panel">
+        <div class="panel-header"><h2>Scan setup</h2></div>
+
+        <div class="control-group">
+          <label>Exchanges</label>
+          <div class="chip-row" id="exchangeChips"></div>
+        </div>
+
+        <div class="control-group">
+          <label>Quote assets</label>
+          <div class="chip-row" id="quoteChips"></div>
+        </div>
+
+        <div class="control-group">
+          <label>Markets</label>
+          <div class="chip-row" id="marketChips"></div>
+          <span class="sub-note">Futures = perpetual contracts on Binance and Hyperliquid (Hyperliquid perps are USDC-margined — check "USDC" above to see them). MEXC and Bitvavo don't offer futures, so they stay Spot-only.</span>
+        </div>
+
+        <div class="control-group">
+          <label>Timeframes (select one or more)</label>
+          <div class="chip-row" id="timeframeChips"></div>
+          <span class="sub-note">Scanning multiple timeframes multiplies the number of requests — matches show which timeframe triggered them. Not every exchange natively supports every interval; unsupported ones fall back to the nearest one they do.</span>
+        </div>
+
+        <div class="control-group">
+          <label>Filter by base asset (optional)</label>
+          <input type="text" id="searchInput" placeholder="e.g. BTC, SOL…" />
+        </div>
+
+        <div class="control-group">
+          <label>Min. 24h volume (quote currency, optional)</label>
+          <input type="number" id="minVolumeInput" placeholder="e.g. 500000" min="0" step="any" />
+        </div>
+
+        <div class="control-group">
+          <label>Min. price (optional)</label>
+          <input type="number" id="minPriceInput" placeholder="e.g. 0.0001" min="0" step="any" />
+        </div>
+
+        <div class="control-group">
+          <label>24h change range % (optional)</label>
+          <div style="display:flex; gap:8px;">
+            <input type="number" id="changeFromInput" placeholder="From, e.g. -20" step="any" />
+            <input type="number" id="changeToInput" placeholder="To, e.g. 10" step="any" />
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label>Average trend filter</label>
+          <div class="chip-row" id="trendFilterChips"></div>
+          <span class="sub-note">Approximated from EMA20 vs EMA50 on each pair's own candles — an extra filter on top of your strategy conditions, not a replacement for them.</span>
+        </div>
+
+        <div class="control-group">
+          <label>Auto-refresh</label>
+          <div class="chip-row" id="autoRefreshChips"></div>
+          <span class="sub-note" id="autoRefreshHint"></span>
+        </div>
+
+        <div class="control-group">
+          <label>Sound alert on new signals</label>
+          <div class="chip-row" id="soundAlertChips"></div>
+          <span class="sub-note">Plays a short beep when an auto-refresh scan finds a match that wasn't there before.</span>
+        </div>
+
+        <div class="control-group" id="mexcProxyGroup">
+          <label>MEXC CORS proxy (optional)</label>
+          <input type="text" id="mexcProxyInput" placeholder="https://your-proxy.example.com/?url=" />
+          <span class="sub-note">Pre-filled with a public proxy (<code>corsproxy.io</code>) so MEXC works out of the box — but a third party sees those requests, so it's a stopgap, not a permanent fix. For your own setup, deploy a small proxy you control (a one-route Cloudflare Worker/Vercel function forwarding the request with <code>Access-Control-Allow-Origin: *</code>) and paste its URL here instead. Clear the field to skip MEXC entirely.</span>
+          <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+            <button class="btn-ghost" id="mexcTestBtn" type="button">Test MEXC connection</button>
+            <span id="mexcTestResult" class="hint"></span>
+          </div>
+        </div>
+
+        <button class="btn-primary" id="scanBtn">Scan now</button>
+        <p class="progress-hint" id="progressHint"></p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Strategies to scan</h2>
+          <span class="panel-subtitle">Check as many as you like — a pair matching any of them shows up in Matches.</span>
+        </div>
+        <div id="strategyChecklist"></div>
+        <span class="sub-note" style="display:block;margin-top:10px;">Click a name to load it into the editor below. Custom strategies (shown in purple) stay saved until you delete them.</span>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Strategy editor</h2>
+          <span class="panel-subtitle">All conditions below must be true (AND). Save to add it to the checklist above.</span>
+        </div>
+
+        <label style="display:block;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#6b7684;font-weight:600;margin-bottom:8px;">Side</label>
+        <div class="side-toggle" id="sideToggle"></div>
+
+        <label style="display:block;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#6b7684;font-weight:600;margin-bottom:8px;">Start from a built-in</label>
+        <div class="preset-row" id="presetRow"></div>
+
+        <label style="display:block;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#6b7684;font-weight:600;margin-bottom:8px;">Indicator library</label>
+        <div class="indicator-tree" id="indicatorTree"></div>
+        <span class="sub-note" style="display:block;margin:8px 0 14px;">Click a leaf to add it as a new condition below — every parameter and the operator/threshold stay editable there afterwards.</span>
+
+        <div class="conditions" id="conditionsList"></div>
+
+        <button class="btn-secondary" id="addConditionBtn">+ Add condition</button>
+
+        <div class="strategy-save">
+          <input type="text" id="strategyNameInput" placeholder="Strategy name" />
+          <button class="btn-secondary" id="saveStrategyBtn">Save</button>
+          <button class="icon-btn" id="deleteStrategyBtn" title="Delete this custom strategy" style="display:none;">🗑</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="main-col" id="mainCol"></div>
+  </main>
+
+  <footer class="app-footer">
+    <p>Signals only — nothing here is financial advice, and trading based on these results is at your own risk. Fear &amp; Greed data via alternative.me.</p>
+    <p class="copyright">© 2026 CC Scanner Pro. All rights reserved.</p>
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* =========================================================================
+   INDICATORS
+   ========================================================================= */
+
+function sma(values, period) {
+  const out = new Array(values.length).fill(null);
+  let sum = 0;
+  for (let i = 0; i < values.length; i++) {
+    sum += values[i];
+    if (i >= period) sum -= values[i - period];
+    if (i >= period - 1) out[i] = sum / period;
+  }
+  return out;
+}
+
+function ema(values, period) {
+  const out = new Array(values.length).fill(null);
+  const k = 2 / (period + 1);
+  let prev = null;
+  for (let i = 0; i < values.length; i++) {
+    if (i === period - 1) {
+      let sum = 0;
+      for (let j = 0; j <= i; j++) sum += values[j];
+      prev = sum / period;
+      out[i] = prev;
+    } else if (i >= period) {
+      prev = values[i] * k + prev * (1 - k);
+      out[i] = prev;
+    }
+  }
+  return out;
+}
+
+function rsi(values, period = 14) {
+  const out = new Array(values.length).fill(null);
+  if (values.length < period + 1) return out;
+  let gainSum = 0, lossSum = 0;
+  for (let i = 1; i <= period; i++) {
+    const diff = values[i] - values[i - 1];
+    if (diff >= 0) gainSum += diff; else lossSum -= diff;
+  }
+  let avgGain = gainSum / period, avgLoss = lossSum / period;
+  out[period] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+  for (let i = period + 1; i < values.length; i++) {
+    const diff = values[i] - values[i - 1];
+    const gain = diff > 0 ? diff : 0;
+    const loss = diff < 0 ? -diff : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    out[i] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+  }
+  return out;
+}
+
+function macd(values, fast = 12, slow = 26, signalPeriod = 9) {
+  const emaFast = ema(values, fast);
+  const emaSlow = ema(values, slow);
+  const line = values.map((_, i) => (emaFast[i] != null && emaSlow[i] != null ? emaFast[i] - emaSlow[i] : null));
+  const firstIdx = line.findIndex((v) => v != null);
+  const signal = new Array(values.length).fill(null);
+  if (firstIdx !== -1) {
+    const compact = line.slice(firstIdx);
+    const compactSignal = ema(compact, signalPeriod);
+    compactSignal.forEach((v, i) => { signal[firstIdx + i] = v; });
+  }
+  const histogram = values.map((_, i) => (line[i] != null && signal[i] != null ? line[i] - signal[i] : null));
+  return { line, signal, histogram };
+}
+
+function stochastic(candles, period = 14, smoothK = 3, smoothD = 3) {
+  const n = candles.length;
+  const rawK = new Array(n).fill(null);
+  for (let i = 0; i < n; i++) {
+    if (i < period - 1) continue;
+    let hh = -Infinity, ll = Infinity;
+    for (let j = i - period + 1; j <= i; j++) {
+      if (candles[j].high > hh) hh = candles[j].high;
+      if (candles[j].low < ll) ll = candles[j].low;
+    }
+    const range = hh - ll;
+    rawK[i] = range === 0 ? 50 : ((candles[i].close - ll) / range) * 100;
+  }
+  const kFilled = rawK.map((v) => (v == null ? 0 : v));
+  const kSmoothed = sma(kFilled, smoothK).map((v, i) => (rawK[i] == null ? null : v));
+  const kValid = kSmoothed.map((v) => (v == null ? 0 : v));
+  const dSmoothed = sma(kValid, smoothD).map((v, i) => (kSmoothed[i] == null ? null : v));
+  return { k: kSmoothed, d: dSmoothed };
+}
+
+function bollinger(closes, period = 20, mult = 2) {
+  const n = closes.length;
+  const basis = sma(closes, period);
+  const upper = new Array(n).fill(null);
+  const lower = new Array(n).fill(null);
+  const percentB = new Array(n).fill(null);
+  const width = new Array(n).fill(null);
+  for (let i = 0; i < n; i++) {
+    if (basis[i] == null) continue;
+    let sumSq = 0;
+    for (let j = i - period + 1; j <= i; j++) sumSq += (closes[j] - basis[i]) ** 2;
+    const stdev = Math.sqrt(sumSq / period);
+    upper[i] = basis[i] + mult * stdev;
+    lower[i] = basis[i] - mult * stdev;
+    const range = upper[i] - lower[i];
+    percentB[i] = range === 0 ? 0.5 : (closes[i] - lower[i]) / range;
+    width[i] = basis[i] !== 0 ? (range / basis[i]) * 100 : 0; // band width as % of the basis (SMA)
+  }
+  return { basis, upper, lower, percentB, width };
+}
+
+function mfi(candles, period = 14) {
+  const n = candles.length;
+  const typical = candles.map((c) => (c.high + c.low + c.close) / 3);
+  const rawFlow = typical.map((tp, i) => tp * candles[i].volume);
+  const out = new Array(n).fill(null);
+  for (let i = 0; i < n; i++) {
+    if (i < period) continue;
+    let posSum = 0, negSum = 0;
+    for (let j = i - period + 1; j <= i; j++) {
+      if (j === 0) continue;
+      if (typical[j] > typical[j - 1]) posSum += rawFlow[j];
+      else if (typical[j] < typical[j - 1]) negSum += rawFlow[j];
+    }
+    out[i] = negSum === 0 ? 100 : 100 - 100 / (1 + posSum / negSum);
+  }
+  return out;
+}
+
+// Stochastic applied to the RSI series instead of price — same %K/%D
+// smoothing as regular Stochastic, just one layer removed.
+function stochasticRSI(candles, rsiPeriod = 14, stochPeriod = 14, smoothK = 3, smoothD = 3) {
+  const closes = candles.map((c) => c.close);
+  const rsiSeries = rsi(closes, rsiPeriod);
+  const n = rsiSeries.length;
+  const rawK = new Array(n).fill(null);
+  for (let i = 0; i < n; i++) {
+    if (i < stochPeriod - 1) continue;
+    let windowVals = [];
+    let ok = true;
+    for (let j = i - stochPeriod + 1; j <= i; j++) {
+      if (rsiSeries[j] == null) { ok = false; break; }
+      windowVals.push(rsiSeries[j]);
+    }
+    if (!ok) continue;
+    const hh = Math.max(...windowVals), ll = Math.min(...windowVals);
+    const range = hh - ll;
+    rawK[i] = range === 0 ? 50 : ((rsiSeries[i] - ll) / range) * 100;
+  }
+  const kFilled = rawK.map((v) => (v == null ? 0 : v));
+  const kSmoothed = sma(kFilled, smoothK).map((v, i) => (rawK[i] == null ? null : v));
+  const kValid = kSmoothed.map((v) => (v == null ? 0 : v));
+  const dSmoothed = sma(kValid, smoothD).map((v, i) => (kSmoothed[i] == null ? null : v));
+  return { k: kSmoothed, d: dSmoothed };
+}
+
+// Parabolic SAR (stop-and-reverse trend line): trails below price in an
+// uptrend, above price in a downtrend, and flips when price crosses it.
+function parabolicSAR(candles, step = 0.02, maxStep = 0.2) {
+  const n = candles.length;
+  const psar = new Array(n).fill(null);
+  if (n < 2) return psar;
+  let bullish = candles[1].close >= candles[0].close;
+  let af = step;
+  let ep = bullish ? candles[0].high : candles[0].low;
+  let sar = bullish ? candles[0].low : candles[0].high;
+  psar[0] = sar;
+  for (let i = 1; i < n; i++) {
+    const prevSar = sar;
+    sar = prevSar + af * (ep - prevSar);
+    if (bullish) {
+      const lowGuard = Math.min(candles[i - 1].low, i >= 2 ? candles[i - 2].low : candles[i - 1].low);
+      sar = Math.min(sar, lowGuard);
+      if (candles[i].low < sar) {
+        bullish = false; sar = ep; ep = candles[i].low; af = step;
+      } else if (candles[i].high > ep) {
+        ep = candles[i].high; af = Math.min(af + step, maxStep);
+      }
+    } else {
+      const highGuard = Math.max(candles[i - 1].high, i >= 2 ? candles[i - 2].high : candles[i - 1].high);
+      sar = Math.max(sar, highGuard);
+      if (candles[i].high > sar) {
+        bullish = true; sar = ep; ep = candles[i].high; af = step;
+      } else if (candles[i].low < ep) {
+        ep = candles[i].low; af = Math.min(af + step, maxStep);
+      }
+    }
+    psar[i] = sar;
+  }
+  return psar;
+}
+
+function at(series, offset = 0) {
+  const idx = series.length - 1 - offset;
+  return idx >= 0 ? series[idx] : null;
+}
+
+function crossedAbove(seriesA, seriesB) {
+  const a1 = at(seriesA, 1), a0 = at(seriesA, 0), b1 = at(seriesB, 1), b0 = at(seriesB, 0);
+  if ([a1, a0, b1, b0].some((v) => v == null)) return false;
+  return a1 <= b1 && a0 > b0;
+}
+
+function crossedBelow(seriesA, seriesB) {
+  const a1 = at(seriesA, 1), a0 = at(seriesA, 0), b1 = at(seriesB, 1), b0 = at(seriesB, 0);
+  if ([a1, a0, b1, b0].some((v) => v == null)) return false;
+  return a1 >= b1 && a0 < b0;
+}
+
+function pctChangeAt(closes, offset) {
+  const n = closes.length;
+  const a = closes[n - 1];
+  const b = closes[n - 1 - offset];
+  if (a == null || b == null || b === 0) return null;
+  return ((a - b) / b) * 100;
+}
+
+// Simple 3-way trend read (bullish/neutral/bearish) from EMA20 vs EMA50 plus
+// price position — an approximation of Sienscan's "Average Trend" filter.
+// Returns null when there isn't enough candle history to judge.
+function computeTrend(candles) {
+  const closes = candles.map((c) => c.close);
+  const fast = ema(closes, 20);
+  const slow = ema(closes, 50);
+  const fastV = at(fast, 0), slowV = at(slow, 0), price = at(closes, 0);
+  if (fastV == null || slowV == null || price == null) return null;
+  if (fastV > slowV && price > fastV) return "bullish";
+  if (fastV < slowV && price < fastV) return "bearish";
+  return "neutral";
+}
+
+const TREND_OPTIONS = [
+  { id: "bullish", label: "Bullish", color: "#1e9e4f", bg: "#e7f6ec" },
+  { id: "neutral", label: "Neutral", color: "#b9770e", bg: "#fdf1e2" },
+  { id: "bearish", label: "Bearish", color: "#d9363e", bg: "#fbe9ea" },
+];
+
+/* =========================================================================
+   EXCHANGE ADAPTERS
+   ========================================================================= */
+
+const AVAILABLE_QUOTES = ["USDC", "USD", "USDT", "EUR"];
+const STABLE_BASES = new Set(["USDT", "USDC", "BUSD", "DAI", "TUSD", "FDUSD", "USDP", "EUR", "USD"]);
+
+const TIMEFRAMES = [
+  { id: "1m", label: "1m" }, { id: "2m", label: "2m" }, { id: "3m", label: "3m" },
+  { id: "5m", label: "5m" }, { id: "15m", label: "15m" }, { id: "30m", label: "30m" },
+  { id: "1h", label: "1h" }, { id: "2h", label: "2h" }, { id: "4h", label: "4h" },
+  { id: "6h", label: "6h" }, { id: "1d", label: "1d" },
+];
+
+const TIMEFRAME_MS = {
+  "1m": 60000, "2m": 120000, "3m": 180000, "5m": 300000, "15m": 900000, "30m": 1800000,
+  "1h": 3600000, "2h": 7200000, "4h": 14400000, "6h": 21600000, "1d": 86400000,
+};
+
+let mexcProxyBase = "https://corsproxy.io/?url=";
+try {
+  const saved = localStorage.getItem("market-scanner:mexc-proxy");
+  if (saved !== null) mexcProxyBase = saved; // respects an explicit empty string too, if the user cleared it on purpose
+} catch {}
+
+function setMexcProxy(url) {
+  mexcProxyBase = url.trim();
+  try { localStorage.setItem("market-scanner:mexc-proxy", mexcProxyBase); } catch {}
+}
+
+async function mexcFetch(url) {
+  const target = mexcProxyBase ? mexcProxyBase + encodeURIComponent(url) : url;
+  let res;
+  try {
+    res = await fetch(target);
+  } catch (err) {
+    throw new Error("blocked by the browser (MEXC doesn't send CORS headers) — set a CORS proxy in Scan setup");
+  }
+  return res;
+}
+
+// MEXC's /exchangeInfo endpoint lists ~2500+ pairs with full filter/permission
+// metadata — several MB, which public CORS proxies (e.g. corsproxy.io) tend to
+// reject with 413 Payload Too Large. We don't actually need that endpoint:
+// ticker/24hr already has every symbol, and is far smaller. listSymbols and
+// fetchTickers both need it, so this memoizes the in-flight request briefly
+// to avoid fetching it twice.
+let mexcTickerCache = null;
+async function fetchMexcTickerJson() {
+  const now = Date.now();
+  if (mexcTickerCache && now - mexcTickerCache.timestamp < 5000) {
+    return mexcTickerCache.promise;
+  }
+  const promise = (async () => {
+    const res = await mexcFetch("https://api.mexc.com/api/v3/ticker/24hr");
+    if (!res.ok) throw new Error(`MEXC ticker/24hr ${res.status}`);
+    return res.json();
+  })();
+  mexcTickerCache = { promise, timestamp: now };
+  return promise;
+}
+
+const MARKETS = [
+  { id: "spot", label: "Spot" },
+  { id: "futures", label: "Futures" },
+];
+
+const SPOT_INTERVAL_MAPS = {
+  binance: { "1m":"1m","2m":"3m","3m":"3m","5m":"5m","15m":"15m","30m":"30m","1h":"1h","2h":"2h","4h":"4h","6h":"6h","1d":"1d" },
+  mexc: { "1m":"1m","2m":"1m","3m":"1m","5m":"5m","15m":"15m","30m":"30m","1h":"60m","2h":"60m","4h":"4h","6h":"4h","1d":"1d" },
+  bitvavo: { "1m":"1m","2m":"1m","3m":"1m","5m":"5m","15m":"15m","30m":"30m","1h":"1h","2h":"2h","4h":"4h","6h":"4h","1d":"1d" },
+  okx: { "1m":"1m","2m":"3m","3m":"3m","5m":"5m","15m":"15m","30m":"30m","1h":"1H","2h":"2H","4h":"4H","6h":"6H","1d":"1D" },
+};
+
+// Hyperliquid's API is a single POST endpoint that takes a `type` in the
+// body rather than separate REST routes per resource.
+const HL_INFO_URL = "https://api.hyperliquid.xyz/info";
+async function hlPost(body) {
+  const res = await fetch(HL_INFO_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Hyperliquid ${body.type} ${res.status}`);
+  return res.json();
+}
+
+const HL_INTERVAL_MAP = { "1m":"1m","2m":"3m","3m":"3m","5m":"5m","15m":"15m","30m":"30m","1h":"1h","2h":"2h","4h":"4h","6h":"4h","1d":"1d" };
+const HL_INTERVAL_MS = { "1m":60000,"3m":180000,"5m":300000,"15m":900000,"30m":1800000,"1h":3600000,"2h":7200000,"4h":14400000,"1d":86400000 };
+
+// OKX runs two parallel derivatives products: classic USDT-margined
+// perpetual swaps (instType=SWAP) and the newer X-Perps (instType=FUTURES),
+// which settle in USD-equivalents (USD, USDC, USDG) — OKX's docs say
+// `settleCcy` is the authoritative margin/settlement currency for these,
+// not the quote parsed from `uly`. Combining both gives full USDC coverage.
+let okxDerivativesCache = null;
+async function fetchOkxCombinedDerivatives() {
+  const now = Date.now();
+  if (okxDerivativesCache && now - okxDerivativesCache.timestamp < 5000) {
+    return okxDerivativesCache.promise;
+  }
+  const promise = (async () => {
+    const [swapRes, futuresRes] = await Promise.all([
+      fetch("https://www.okx.com/api/v5/public/instruments?instType=SWAP"),
+      fetch("https://www.okx.com/api/v5/public/instruments?instType=FUTURES"),
+    ]);
+    if (!swapRes.ok) throw new Error(`OKX SWAP instruments ${swapRes.status}`);
+    if (!futuresRes.ok) throw new Error(`OKX FUTURES (X-Perps) instruments ${futuresRes.status}`);
+    const swapJson = await swapRes.json();
+    const futuresJson = await futuresRes.json();
+    const swapSymbols = swapJson.data
+      .filter((s) => s.state === "live" && s.uly)
+      .map((s) => { const [base, quote] = s.uly.split("-"); return { symbol: `${base}/${quote}`, base, quote, raw: s.instId }; });
+    const xPerpSymbols = futuresJson.data
+      .filter((s) => s.state === "live" && s.uly && s.settleCcy)
+      .map((s) => ({ symbol: `${s.uly.split("-")[0]}/${s.settleCcy}`, base: s.uly.split("-")[0], quote: s.settleCcy, raw: s.instId }));
+    return [...swapSymbols, ...xPerpSymbols];
+  })();
+  okxDerivativesCache = { promise, timestamp: now };
+  return promise;
+}
+
+let okxTickerCache = null;
+async function fetchOkxCombinedTickers() {
+  const now = Date.now();
+  if (okxTickerCache && now - okxTickerCache.timestamp < 5000) {
+    return okxTickerCache.promise;
+  }
+  const promise = (async () => {
+    const [swapRes, futuresRes] = await Promise.all([
+      fetch("https://www.okx.com/api/v5/market/tickers?instType=SWAP"),
+      fetch("https://www.okx.com/api/v5/market/tickers?instType=FUTURES"),
+    ]);
+    if (!swapRes.ok) throw new Error(`OKX SWAP tickers ${swapRes.status}`);
+    if (!futuresRes.ok) throw new Error(`OKX FUTURES (X-Perps) tickers ${futuresRes.status}`);
+    const swapJson = await swapRes.json();
+    const futuresJson = await futuresRes.json();
+    const map = new Map();
+    for (const t of [...swapJson.data, ...futuresJson.data]) {
+      const last = parseFloat(t.last);
+      const open24h = parseFloat(t.open24h);
+      const changePct = open24h ? ((last - open24h) / open24h) * 100 : null;
+      map.set(t.instId, { price: last, changePct, quoteVolume: parseFloat(t.volCcy24h) });
+    }
+    return map;
+  })();
+  okxTickerCache = { promise, timestamp: now };
+  return promise;
+}
+
+const EXCHANGES = {
+  binance: {
+    id: "binance",
+    label: "Binance",
+    markets: {
+      spot: {
+        intervalMap: SPOT_INTERVAL_MAPS.binance,
+        async listSymbols(quotes) {
+          const res = await fetch("https://api.binance.com/api/v3/exchangeInfo");
+          if (!res.ok) throw new Error(`Binance exchangeInfo ${res.status}`);
+          const json = await res.json();
+          return json.symbols
+            .filter((s) => s.status === "TRADING" && quotes.includes(s.quoteAsset))
+            .map((s) => ({ symbol: `${s.baseAsset}/${s.quoteAsset}`, base: s.baseAsset, quote: s.quoteAsset, raw: s.symbol }));
+        },
+        async fetchTickers() {
+          const res = await fetch("https://api.binance.com/api/v3/ticker/24hr");
+          if (!res.ok) throw new Error(`Binance ticker/24hr ${res.status}`);
+          const json = await res.json();
+          const map = new Map();
+          for (const t of json) map.set(t.symbol, { price: parseFloat(t.lastPrice), changePct: parseFloat(t.priceChangePercent), quoteVolume: parseFloat(t.quoteVolume) });
+          return map;
+        },
+        async fetchKlines(raw, timeframe, limit = 150) {
+          const interval = SPOT_INTERVAL_MAPS.binance[timeframe] || "1h";
+          const url = `https://api.binance.com/api/v3/klines?symbol=${raw}&interval=${interval}&limit=${limit}`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`Binance klines ${res.status}`);
+          const json = await res.json();
+          return json.map((k) => ({ time: k[0], open: parseFloat(k[1]), high: parseFloat(k[2]), low: parseFloat(k[3]), close: parseFloat(k[4]), volume: parseFloat(k[5]) }));
+        },
+        deeplink(raw) { return `https://www.binance.com/en/trade/${raw.replace(/(USDT|USDC|USD)$/, "_$1")}`; },
+      },
+      futures: {
+        intervalMap: SPOT_INTERVAL_MAPS.binance,
+        async listSymbols(quotes) {
+          const res = await fetch("https://fapi.binance.com/fapi/v1/exchangeInfo");
+          if (!res.ok) throw new Error(`Binance futures exchangeInfo ${res.status}`);
+          const json = await res.json();
+          return json.symbols
+            .filter((s) => s.status === "TRADING" && s.contractType === "PERPETUAL" && quotes.includes(s.quoteAsset))
+            .map((s) => ({ symbol: `${s.baseAsset}/${s.quoteAsset}`, base: s.baseAsset, quote: s.quoteAsset, raw: s.symbol }));
+        },
+        async fetchTickers() {
+          const res = await fetch("https://fapi.binance.com/fapi/v1/ticker/24hr");
+          if (!res.ok) throw new Error(`Binance futures ticker/24hr ${res.status}`);
+          const json = await res.json();
+          const map = new Map();
+          for (const t of json) map.set(t.symbol, { price: parseFloat(t.lastPrice), changePct: parseFloat(t.priceChangePercent), quoteVolume: parseFloat(t.quoteVolume) });
+          return map;
+        },
+        async fetchKlines(raw, timeframe, limit = 150) {
+          const interval = SPOT_INTERVAL_MAPS.binance[timeframe] || "1h";
+          const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${raw}&interval=${interval}&limit=${limit}`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`Binance futures klines ${res.status}`);
+          const json = await res.json();
+          return json.map((k) => ({ time: k[0], open: parseFloat(k[1]), high: parseFloat(k[2]), low: parseFloat(k[3]), close: parseFloat(k[4]), volume: parseFloat(k[5]) }));
+        },
+        deeplink(raw) { return `https://www.binance.com/en/futures/${raw}`; },
+      },
+    },
+  },
+
+  mexc: {
+    id: "mexc",
+    label: "MEXC",
+    markets: {
+      spot: {
+        intervalMap: SPOT_INTERVAL_MAPS.mexc,
+        async listSymbols(quotes) {
+          const json = await fetchMexcTickerJson();
+          const sortedQuotes = [...quotes].sort((a, b) => b.length - a.length);
+          const seen = new Set();
+          const out = [];
+          for (const t of json) {
+            const symbol = t.symbol;
+            if (seen.has(symbol)) continue;
+            const quote = sortedQuotes.find((q) => symbol.endsWith(q));
+            if (!quote) continue;
+            const base = symbol.slice(0, symbol.length - quote.length);
+            if (!base) continue;
+            seen.add(symbol);
+            out.push({ symbol: `${base}/${quote}`, base, quote, raw: symbol });
+          }
+          return out;
+        },
+        async fetchTickers() {
+          const json = await fetchMexcTickerJson();
+          const map = new Map();
+          for (const t of json) map.set(t.symbol, { price: parseFloat(t.lastPrice), changePct: parseFloat(t.priceChangePercent), quoteVolume: parseFloat(t.quoteVolume ?? t.volume) });
+          return map;
+        },
+        async fetchKlines(raw, timeframe, limit = 150) {
+          const interval = SPOT_INTERVAL_MAPS.mexc[timeframe] || "60m";
+          const url = `https://api.mexc.com/api/v3/klines?symbol=${raw}&interval=${interval}&limit=${limit}`;
+          const res = await mexcFetch(url);
+          if (!res.ok) throw new Error(`MEXC klines ${res.status}`);
+          const json = await res.json();
+          return json.map((k) => ({ time: k[0], open: parseFloat(k[1]), high: parseFloat(k[2]), low: parseFloat(k[3]), close: parseFloat(k[4]), volume: parseFloat(k[5]) }));
+        },
+        deeplink(raw) { return `https://www.mexc.com/exchange/${raw.replace(/(USDT|USDC|USD)$/, "_$1")}`; },
+      },
+      // MEXC's futures API recently moved base domains and uses a different
+      // response shape (start/end timestamps instead of `limit`, different
+      // field names). Not wired up yet — Spot only for MEXC.
+    },
+  },
+
+  bitvavo: {
+    id: "bitvavo",
+    label: "Bitvavo",
+    markets: {
+      spot: {
+        intervalMap: SPOT_INTERVAL_MAPS.bitvavo,
+        async listSymbols(quotes) {
+          const res = await fetch("https://api.bitvavo.com/v2/markets");
+          if (!res.ok) throw new Error(`Bitvavo markets ${res.status}`);
+          const json = await res.json();
+          return json
+            .filter((m) => m.status === "trading" && quotes.includes(m.quote))
+            .map((m) => ({ symbol: `${m.base}/${m.quote}`, base: m.base, quote: m.quote, raw: m.market }));
+        },
+        async fetchTickers() {
+          const res = await fetch("https://api.bitvavo.com/v2/ticker/24h");
+          if (!res.ok) throw new Error(`Bitvavo ticker/24h ${res.status}`);
+          const json = await res.json();
+          const map = new Map();
+          for (const t of json) {
+            const last = parseFloat(t.last);
+            const open = parseFloat(t.open);
+            const changePct = open ? ((last - open) / open) * 100 : null;
+            map.set(t.market, { price: last, changePct, quoteVolume: parseFloat(t.volumeQuote) });
+          }
+          return map;
+        },
+        async fetchKlines(raw, timeframe, limit = 150) {
+          const interval = SPOT_INTERVAL_MAPS.bitvavo[timeframe] || "1h";
+          const url = `https://api.bitvavo.com/v2/${raw}/candles?interval=${interval}&limit=${limit}`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`Bitvavo candles ${res.status}`);
+          const json = await res.json();
+          // Bitvavo returns newest-first: [timestamp, open, high, low, close, volume]
+          return json.slice().reverse().map((k) => ({ time: Number(k[0]), open: parseFloat(k[1]), high: parseFloat(k[2]), low: parseFloat(k[3]), close: parseFloat(k[4]), volume: parseFloat(k[5]) }));
+        },
+        deeplink(raw) { return `https://account.bitvavo.com/markets/${raw}`; },
+      },
+      // Bitvavo doesn't offer derivatives/futures trading.
+    },
+  },
+
+  okx: {
+    id: "okx",
+    label: "OKX",
+    markets: {
+      spot: {
+        intervalMap: SPOT_INTERVAL_MAPS.okx,
+        async listSymbols(quotes) {
+          const res = await fetch("https://www.okx.com/api/v5/public/instruments?instType=SPOT");
+          if (!res.ok) throw new Error(`OKX instruments ${res.status}`);
+          const json = await res.json();
+          return json.data
+            .filter((s) => s.state === "live" && quotes.includes(s.quoteCcy))
+            .map((s) => ({ symbol: `${s.baseCcy}/${s.quoteCcy}`, base: s.baseCcy, quote: s.quoteCcy, raw: s.instId }));
+        },
+        async fetchTickers() {
+          const res = await fetch("https://www.okx.com/api/v5/market/tickers?instType=SPOT");
+          if (!res.ok) throw new Error(`OKX tickers ${res.status}`);
+          const json = await res.json();
+          const map = new Map();
+          for (const t of json.data) {
+            const last = parseFloat(t.last);
+            const open24h = parseFloat(t.open24h);
+            const changePct = open24h ? ((last - open24h) / open24h) * 100 : null;
+            map.set(t.instId, { price: last, changePct, quoteVolume: parseFloat(t.volCcy24h) });
+          }
+          return map;
+        },
+        async fetchKlines(raw, timeframe, limit = 150) {
+          const bar = SPOT_INTERVAL_MAPS.okx[timeframe] || "1H";
+          const url = `https://www.okx.com/api/v5/market/candles?instId=${raw}&bar=${bar}&limit=${limit}`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`OKX candles ${res.status}`);
+          const json = await res.json();
+          return json.data.slice().reverse().map((k) => ({ time: Number(k[0]), open: parseFloat(k[1]), high: parseFloat(k[2]), low: parseFloat(k[3]), close: parseFloat(k[4]), volume: parseFloat(k[5]) }));
+        },
+        deeplink(raw) { return `https://www.okx.com/trade-spot/${raw.toLowerCase()}`; },
+      },
+      futures: {
+        // Classic USDT SWAPs plus USD/USDC/USDG-margined X-Perps, combined.
+        intervalMap: SPOT_INTERVAL_MAPS.okx,
+        async listSymbols(quotes) {
+          const combined = await fetchOkxCombinedDerivatives();
+          return combined.filter((s) => quotes.includes(s.quote));
+        },
+        async fetchTickers() { return fetchOkxCombinedTickers(); },
+        async fetchKlines(raw, timeframe, limit = 150) {
+          const bar = SPOT_INTERVAL_MAPS.okx[timeframe] || "1H";
+          const url = `https://www.okx.com/api/v5/market/candles?instId=${raw}&bar=${bar}&limit=${limit}`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`OKX futures candles ${res.status}`);
+          const json = await res.json();
+          return json.data.slice().reverse().map((k) => ({ time: Number(k[0]), open: parseFloat(k[1]), high: parseFloat(k[2]), low: parseFloat(k[3]), close: parseFloat(k[4]), volume: parseFloat(k[5]) }));
+        },
+        deeplink(raw) { return `https://www.okx.com/trade-swap/${raw.toLowerCase()}`; },
+      },
+    },
+  },
+
+  hyperliquid: {
+    id: "hyperliquid",
+    label: "Hyperliquid",
+    markets: {
+      // Perpetuals only, per request — Hyperliquid's perps are USDC-margined
+      // (prices/PnL are USD-denominated, collateral is USDC), so this only
+      // ever returns anything when "USDC" is a selected quote asset.
+      futures: {
+        intervalMap: HL_INTERVAL_MAP,
+        async listSymbols(quotes) {
+          if (!quotes.includes("USDC")) return [];
+          const [meta] = await hlPost({ type: "metaAndAssetCtxs" });
+          return (meta.universe || [])
+            .filter((u) => !u.isDelisted)
+            .map((u) => ({ symbol: `${u.name}/USDC`, base: u.name, quote: "USDC", raw: u.name }));
+        },
+        async fetchTickers() {
+          const [meta, ctxs] = await hlPost({ type: "metaAndAssetCtxs" });
+          const map = new Map();
+          (meta.universe || []).forEach((u, i) => {
+            const ctx = ctxs[i] || {};
+            const price = parseFloat(ctx.markPx || 0);
+            const prevPx = parseFloat(ctx.prevDayPx || 0);
+            const changePct = prevPx > 0 ? ((price - prevPx) / prevPx) * 100 : null;
+            map.set(u.name, { price, changePct, quoteVolume: parseFloat(ctx.dayNtlVlm || 0) });
+          });
+          return map;
+        },
+        async fetchKlines(raw, timeframe, limit = 150) {
+          const interval = HL_INTERVAL_MAP[timeframe] || "1h";
+          const spanMs = (HL_INTERVAL_MS[interval] || 3600000) * limit;
+          const endTime = Date.now();
+          const startTime = endTime - spanMs;
+          const data = await hlPost({ type: "candleSnapshot", req: { coin: raw, interval, startTime, endTime } });
+          return (data || [])
+            .map((c) => ({ time: c.t, open: parseFloat(c.o), high: parseFloat(c.h), low: parseFloat(c.l), close: parseFloat(c.c), volume: parseFloat(c.v) }))
+            .sort((a, b) => a.time - b.time);
+        },
+        deeplink(raw) { return `https://app.hyperliquid.xyz/trade/${raw}`; },
+      },
+    },
+  },
+};
+
+/* =========================================================================
+   STRATEGY: INDICATOR/OPERATOR METADATA + CONDITION EVALUATION
+   ========================================================================= */
+
+const INDICATORS = [
+  { id: "PRICE", label: "Price", needsPeriod: false, category: "Other" },
+  { id: "SMA", label: "SMA", needsPeriod: true, defaultPeriod: 50, category: "Moving Averages" },
+  { id: "EMA", label: "EMA", needsPeriod: true, defaultPeriod: 20, category: "Moving Averages" },
+  { id: "RSI", label: "RSI", needsPeriod: true, defaultPeriod: 14, category: "Momentum" },
+  { id: "MACD_LINE", label: "MACD line", needsPeriod: false, isMacd: true, category: "Trend" },
+  { id: "MACD_SIGNAL", label: "MACD signal", needsPeriod: false, isMacd: true, category: "Trend" },
+  { id: "MACD_HIST", label: "MACD histogram", needsPeriod: false, isMacd: true, category: "Trend" },
+  { id: "STOCH_K", label: "Stochastic %K", needsPeriod: true, defaultPeriod: 14, extras: [{ key: "extra1", label: "Smooth K", default: 3 }, { key: "extra2", label: "Smooth D", default: 3 }], category: "Momentum" },
+  { id: "STOCH_D", label: "Stochastic %D", needsPeriod: true, defaultPeriod: 14, extras: [{ key: "extra1", label: "Smooth K", default: 3 }, { key: "extra2", label: "Smooth D", default: 3 }], category: "Momentum" },
+  { id: "STOCH_RSI_K", label: "Stochastic RSI %K", needsPeriod: true, defaultPeriod: 14, extras: [{ key: "extra1", label: "Smooth K", default: 3 }, { key: "extra2", label: "Smooth D", default: 3 }], category: "Momentum" },
+  { id: "STOCH_RSI_D", label: "Stochastic RSI %D", needsPeriod: true, defaultPeriod: 14, extras: [{ key: "extra1", label: "Smooth K", default: 3 }, { key: "extra2", label: "Smooth D", default: 3 }], category: "Momentum" },
+  { id: "PSAR", label: "Parabolic SAR", needsPeriod: false, category: "Trend" },
+  { id: "BB_UPPER", label: "Bollinger upper", needsPeriod: true, defaultPeriod: 20, extras: [{ key: "extra1", label: "StdDev", default: 2 }], category: "Volatility" },
+  { id: "BB_LOWER", label: "Bollinger lower", needsPeriod: true, defaultPeriod: 20, extras: [{ key: "extra1", label: "StdDev", default: 2 }], category: "Volatility" },
+  { id: "BB_PERCENT", label: "Bollinger %B", needsPeriod: true, defaultPeriod: 20, extras: [{ key: "extra1", label: "StdDev", default: 2 }], category: "Volatility" },
+  { id: "BB_WIDTH", label: "Bollinger width %", needsPeriod: true, defaultPeriod: 20, extras: [{ key: "extra1", label: "StdDev", default: 2 }], category: "Volatility" },
+  { id: "MFI", label: "Money Flow Index", needsPeriod: true, defaultPeriod: 14, category: "Momentum" },
+  { id: "VOLUME", label: "Volume", needsPeriod: false, category: "Other" },
+  { id: "CHANGE_24H", label: "24h change %", needsPeriod: false, category: "Other" },
+];
+
+const INDICATOR_CATEGORY_ORDER = ["Momentum", "Moving Averages", "Trend", "Volatility", "Other"];
+
+// Curated preset tree for the "Indicator library" picker — mirrors Sienscan's
+// Momentum / Moving Averages / Trend / Volatility grouping. Each leaf adds a
+// ready-made condition (indicator + exact params) that the person can still
+// fine-tune afterwards in the condition row it produces.
+const INDICATOR_TREE = [
+  {
+    category: "Momentum",
+    groups: [
+      { name: "Stochastic Oscillator", presets: [
+        { label: "Stoch 14/1/3", indicator: "STOCH_K", period: 14, extra1: 1, extra2: 3 },
+        { label: "Stoch 14/3/3", indicator: "STOCH_K", period: 14, extra1: 3, extra2: 3 },
+      ] },
+      { name: "Relative Strength Index", presets: [
+        { label: "RSI 14", indicator: "RSI", period: 14 },
+      ] },
+      { name: "Stochastic RSI", presets: [
+        { label: "Stoch RSI 14/1/3", indicator: "STOCH_RSI_K", period: 14, extra1: 1, extra2: 3 },
+        { label: "Stoch RSI 14/3/4", indicator: "STOCH_RSI_K", period: 14, extra1: 3, extra2: 4 },
+      ] },
+      { name: "Money Flow Index", presets: [
+        { label: "MFI 12", indicator: "MFI", period: 12 },
+        { label: "MFI 14", indicator: "MFI", period: 14 },
+      ] },
+    ],
+  },
+  {
+    category: "Moving Averages",
+    groups: [
+      { name: "MA", presets: [5, 8, 13, 21, 50, 200].map((p) => ({ label: `MA${p}`, indicator: "SMA", period: p })) },
+      { name: "EMA", presets: [5, 8, 13, 21, 50, 200].map((p) => ({ label: `EMA${p}`, indicator: "EMA", period: p })) },
+    ],
+  },
+  {
+    category: "Trend",
+    groups: [
+      { name: "Parabolic SAR", presets: [{ label: "PSAR", indicator: "PSAR" }] },
+      { name: "MACD", presets: [{ label: "MACD 12/26/9", indicator: "MACD_LINE", macdFast: 12, macdSlow: 26, macdSignal: 9 }] },
+    ],
+  },
+  {
+    category: "Volatility",
+    groups: [
+      { name: "Bollinger Bands", presets: [
+        { label: "Length: 20 - StdDev: 2", indicator: "BB_PERCENT", period: 20, extra1: 2 },
+        { label: "Length: 20 - StdDev: 0.5", indicator: "BB_PERCENT", period: 20, extra1: 0.5 },
+      ] },
+    ],
+  },
+];
+// Note: Sienscan's tree also has a "Market Climate" leaf (Min/Max Value:
+// 1h/4h/1d) — that's a market-wide average, not a per-pair value, so it
+// can't become a per-pair condition here. It has its own tab instead.
+
+const OPERATORS = [
+  { id: ">", label: "is above" },
+  { id: "<", label: "is below" },
+  { id: ">=", label: "is at or above" },
+  { id: "<=", label: "is at or below" },
+  { id: "crosses_above", label: "crosses above" },
+  { id: "crosses_below", label: "crosses below" },
+];
+
+function uid() { return "c" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+
+function indicatorMeta(id) { return INDICATORS.find((i) => i.id === id); }
+
+function newCondition() {
+  return {
+    id: uid(),
+    indicator: "RSI",
+    period: 14,
+    extra1: null,
+    extra2: null,
+    macdFast: 12, macdSlow: 26, macdSignal: 9,
+    operator: "<",
+    compareType: "value",
+    value: 30,
+    compareIndicator: "EMA",
+    comparePeriod: 20,
+    compareExtra1: null,
+    compareExtra2: null,
+  };
+}
+
+// Builds a fully-formed condition from a shorthand description, used by built-in strategies.
+function cond(overrides) {
+  const base = newCondition();
+  Object.assign(base, overrides);
+  const meta = indicatorMeta(base.indicator);
+  if (meta?.extras) {
+    meta.extras.forEach((ex, i) => {
+      const key = i === 0 ? "extra1" : "extra2";
+      if (base[key] == null) base[key] = ex.default;
+    });
+  }
+  if (base.compareType === "indicator") {
+    const cmeta = indicatorMeta(base.compareIndicator);
+    if (cmeta?.extras) {
+      cmeta.extras.forEach((ex, i) => {
+        const key = i === 0 ? "compareExtra1" : "compareExtra2";
+        if (base[key] == null) base[key] = ex.default;
+      });
+    }
+  }
+  return base;
+}
+
+function buildSeries(spec, candles) {
+  const closes = candles.map((c) => c.close);
+  const volumes = candles.map((c) => c.volume);
+  switch (spec.indicator) {
+    case "PRICE": return closes;
+    case "VOLUME": return volumes;
+    case "SMA": return sma(closes, spec.period);
+    case "EMA": return ema(closes, spec.period);
+    case "RSI": return rsi(closes, spec.period);
+    case "MACD_LINE": return macd(closes, spec.macdFast, spec.macdSlow, spec.macdSignal).line;
+    case "MACD_SIGNAL": return macd(closes, spec.macdFast, spec.macdSlow, spec.macdSignal).signal;
+    case "MACD_HIST": return macd(closes, spec.macdFast, spec.macdSlow, spec.macdSignal).histogram;
+    case "STOCH_K": return stochastic(candles, spec.period, spec.extra1 || 3, spec.extra2 || 3).k;
+    case "STOCH_D": return stochastic(candles, spec.period, spec.extra1 || 3, spec.extra2 || 3).d;
+    case "STOCH_RSI_K": return stochasticRSI(candles, spec.period, spec.period, spec.extra1 || 3, spec.extra2 || 3).k;
+    case "STOCH_RSI_D": return stochasticRSI(candles, spec.period, spec.period, spec.extra1 || 3, spec.extra2 || 3).d;
+    case "PSAR": return parabolicSAR(candles);
+    case "BB_UPPER": return bollinger(closes, spec.period, spec.extra1 || 2).upper;
+    case "BB_LOWER": return bollinger(closes, spec.period, spec.extra1 || 2).lower;
+    case "BB_PERCENT": return bollinger(closes, spec.period, spec.extra1 || 2).percentB;
+    case "BB_WIDTH": return bollinger(closes, spec.period, spec.extra1 || 2).width;
+    case "MFI": return mfi(candles, spec.period);
+    default: return null;
+  }
+}
+
+function compareSpecFrom(condition) {
+  return {
+    indicator: condition.compareIndicator,
+    period: condition.comparePeriod,
+    extra1: condition.compareExtra1,
+    extra2: condition.compareExtra2,
+    macdFast: condition.macdFast, macdSlow: condition.macdSlow, macdSignal: condition.macdSignal,
+  };
+}
+
+function compareToValue(left, operator, right) {
+  switch (operator) {
+    case ">": return left > right;
+    case "<": return left < right;
+    case ">=": return left >= right;
+    case "<=": return left <= right;
+    default: return false;
+  }
+}
+
+function evaluateCondition(condition, ctx) {
+  const { candles, ticker } = ctx;
+
+  if (condition.indicator === "CHANGE_24H") {
+    const leftValue = ticker?.changePct ?? null;
+    if (leftValue == null) return { pass: false, leftValue: null };
+    return { pass: compareToValue(leftValue, condition.operator, condition.value), leftValue };
+  }
+
+  const leftSeries = buildSeries(condition, candles);
+  if (!leftSeries) return { pass: false, leftValue: null };
+  const leftValue = at(leftSeries, 0);
+  if (leftValue == null) return { pass: false, leftValue: null };
+
+  if (condition.operator === "crosses_above" || condition.operator === "crosses_below") {
+    const rightSeries = condition.compareType === "indicator"
+      ? buildSeries(compareSpecFrom(condition), candles)
+      : candles.map(() => condition.value);
+    if (!rightSeries) return { pass: false, leftValue };
+    const pass = condition.operator === "crosses_above" ? crossedAbove(leftSeries, rightSeries) : crossedBelow(leftSeries, rightSeries);
+    return { pass, leftValue };
+  }
+
+  const rightValue = condition.compareType === "indicator"
+    ? at(buildSeries(compareSpecFrom(condition), candles), 0)
+    : condition.value;
+
+  if (rightValue == null) return { pass: false, leftValue };
+  return { pass: compareToValue(leftValue, condition.operator, rightValue), leftValue };
+}
+
+function evaluateStrategy(conditions, ctx) {
+  const details = conditions.map((c) => ({ condition: c, ...evaluateCondition(c, ctx) }));
+  const pass = details.length > 0 && details.every((d) => d.pass);
+  return { pass, details };
+}
+
+/* =========================================================================
+   BUILT-IN STRATEGIES
+   ========================================================================= */
+
+const BUILT_IN_STRATEGIES = [
+  {
+    name: "RSI oversold",
+    description: "RSI(14) below 30.",
+    conditions: [cond({ indicator: "RSI", period: 14, operator: "<", compareType: "value", value: 30 })],
+  },
+  {
+    name: "RSI & Stoch oversold",
+    description: "RSI(14) below 30 and Stochastic %K(14,3,3) below 20.",
+    conditions: [
+      cond({ indicator: "RSI", period: 14, operator: "<", compareType: "value", value: 30 }),
+      cond({ indicator: "STOCH_K", period: 14, extra1: 3, extra2: 3, operator: "<", compareType: "value", value: 20 }),
+    ],
+  },
+  {
+    name: "Stoch & BB oversold",
+    description: "Stochastic %K(14,3,3) below 20 and price near/below the lower Bollinger Band.",
+    conditions: [
+      cond({ indicator: "STOCH_K", period: 14, extra1: 3, extra2: 3, operator: "<", compareType: "value", value: 20 }),
+      cond({ indicator: "BB_PERCENT", period: 20, extra1: 2, operator: "<", compareType: "value", value: 0.05 }),
+    ],
+  },
+  {
+    name: "MACD bullish cross",
+    description: "MACD line crosses above the MACD signal line.",
+    conditions: [
+      cond({ indicator: "MACD_LINE", operator: "crosses_above", compareType: "indicator", compareIndicator: "MACD_SIGNAL" }),
+    ],
+  },
+  {
+    name: "Golden cross",
+    description: "EMA(50) crosses above EMA(200).",
+    conditions: [
+      cond({ indicator: "EMA", period: 50, operator: "crosses_above", compareType: "indicator", compareIndicator: "EMA", comparePeriod: 200 }),
+    ],
+  },
+  {
+    name: "MFI & RSI oversold",
+    description: "Money Flow Index(14) below 20 and RSI(14) below 30.",
+    conditions: [
+      cond({ indicator: "MFI", period: 14, operator: "<", compareType: "value", value: 20 }),
+      cond({ indicator: "RSI", period: 14, operator: "<", compareType: "value", value: 30 }),
+    ],
+  },
+  {
+    name: "SBM Methode",
+    description: "Stochastic, Bollinger Bands & MACD/MA-lines. Candle closes below the lower Bollinger Band, Stochastic oversold and %K crosses above %D, MA200>MA50>MA20 (downtrend structure), PSAR below MA20, and MACD line crosses above signal (recovery). Approximates the SBM stappenplan — the visual \"wacht op een lichte rode candle\" nuance isn't encoded as a condition.",
+    conditions: [
+      cond({ indicator: "BB_PERCENT", period: 20, extra1: 2, operator: "<", compareType: "value", value: 0 }),
+      cond({ indicator: "STOCH_K", period: 14, extra1: 1, extra2: 3, operator: "<", compareType: "value", value: 20 }),
+      cond({ indicator: "STOCH_K", period: 14, extra1: 1, extra2: 3, operator: "crosses_above", compareType: "indicator", compareIndicator: "STOCH_D", comparePeriod: 14, compareExtra1: 1, compareExtra2: 3 }),
+      cond({ indicator: "SMA", period: 200, operator: ">", compareType: "indicator", compareIndicator: "SMA", comparePeriod: 50 }),
+      cond({ indicator: "SMA", period: 50, operator: ">", compareType: "indicator", compareIndicator: "SMA", comparePeriod: 20 }),
+      cond({ indicator: "PSAR", operator: "<", compareType: "indicator", compareIndicator: "SMA", comparePeriod: 20 }),
+      cond({ indicator: "MACD_LINE", operator: "crosses_above", compareType: "indicator", compareIndicator: "MACD_SIGNAL" }),
+    ],
+  },
+  {
+    name: "STOBB",
+    description: "Bollinger width \u22651.5%, Stochastic oversold, and candle closes below the lower Bollinger Band. Note: the source strategy also screens out pairs with \u22654 of the last 14 candles missing volume — that per-candle volume-gap count isn't something our indicator engine tracks, so it's left out here.",
+    conditions: [
+      cond({ indicator: "BB_WIDTH", period: 20, extra1: 2, operator: ">=", compareType: "value", value: 1.5 }),
+      cond({ indicator: "STOCH_K", period: 14, extra1: 3, extra2: 3, operator: "<", compareType: "value", value: 20 }),
+      cond({ indicator: "BB_PERCENT", period: 20, extra1: 2, operator: "<", compareType: "value", value: 0 }),
+    ],
+  },
+];
+
+/* =========================================================================
+   SCANNER
+   ========================================================================= */
+
+// Shared pre-filter applied before spending API calls on candles: liquidity,
+// price floor, and 24h change range. Any bound left null/undefined is skipped.
+function tickerPassesFilters(ticker, { minVolume, minPrice, changeFrom, changeTo } = {}) {
+  if (!ticker) return true; // let it through; the caller decides what to do without ticker data
+  if (minVolume != null && (ticker.quoteVolume == null || ticker.quoteVolume < minVolume)) return false;
+  if (minPrice != null && (ticker.price == null || ticker.price < minPrice)) return false;
+  if (changeFrom != null && (ticker.changePct == null || ticker.changePct < changeFrom)) return false;
+  if (changeTo != null && (ticker.changePct == null || ticker.changePct > changeTo)) return false;
+  return true;
+}
+
+async function mapLimit(items, limit, worker) {
+  const results = new Array(items.length);
+  let next = 0;
+  async function run() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await worker(items[i], i);
+    }
+  }
+  const workers = Array.from({ length: Math.min(limit, items.length) }, run);
+  await Promise.all(workers);
+  return results;
+}
+
+async function runScan({ exchangeIds, quotes, timeframes, markets, strategies, search = "", filters = {}, trendFilters = ["bullish", "neutral", "bearish"], concurrency = 6, onProgress }) {
+  const allResults = [];
+  const errors = [];
+
+  for (const exchangeId of exchangeIds) {
+    const exchange = EXCHANGES[exchangeId];
+    if (!exchange) continue;
+
+    for (const marketId of markets) {
+      const marketAdapter = exchange.markets[marketId];
+      if (!marketAdapter) {
+        errors.push({ exchangeId, message: `${exchange.label} doesn't support ${marketId} yet — skipped.` });
+        continue;
+      }
+
+      try {
+        const [symbols, tickers] = await Promise.all([marketAdapter.listSymbols(quotes), marketAdapter.fetchTickers()]);
+        const filtered = symbols.filter((s) => {
+          if (search && !s.base.toLowerCase().includes(search.toLowerCase())) return false;
+          return tickerPassesFilters(tickers.get(s.raw), filters);
+        });
+
+        // Every (symbol, timeframe) combination is one unit of work; each
+        // fetches candles once and checks them against every selected strategy.
+        const tasks = [];
+        for (const s of filtered) for (const tf of timeframes) tasks.push({ s, tf });
+
+        let done = 0;
+        await mapLimit(tasks, concurrency, async ({ s, tf }) => {
+          try {
+            const ticker = tickers.get(s.raw);
+            const candles = await marketAdapter.fetchKlines(s.raw, tf, 150);
+            const bbPercent = at(bollinger(candles.map((c) => c.close), 20, 2).percentB, 0);
+            const trend = computeTrend(candles);
+            const lastCandleTime = candles.length ? candles[candles.length - 1].time : null;
+
+            if (trend != null && !trendFilters.includes(trend)) return;
+
+            for (const strat of strategies) {
+              const { pass, details } = evaluateStrategy(strat.conditions, { candles, ticker });
+              if (!pass) continue;
+              allResults.push({
+                exchange: exchange.id,
+                exchangeLabel: exchange.label,
+                market: marketId,
+                symbol: s.symbol,
+                raw: s.raw,
+                timeframe: tf,
+                strategyName: strat.name,
+                side: strat.side || "long",
+                bbPercent,
+                trend,
+                candleTime: lastCandleTime,
+                price: ticker?.price ?? (candles.length ? candles[candles.length - 1].close : null),
+                changePct: ticker?.changePct ?? null,
+                quoteVolume: ticker?.quoteVolume ?? null,
+                details,
+              });
+            }
+          } catch (err) {
+            // one bad symbol/timeframe shouldn't kill the whole scan
+          } finally {
+            done++;
+            onProgress?.({ exchangeId, market: marketId, done, total: tasks.length });
+          }
+        });
+      } catch (err) {
+        errors.push({ exchangeId, message: `${marketId}: ${err.message}` });
+      }
+    }
+  }
+
+  allResults.sort((a, b) => (b.quoteVolume ?? 0) - (a.quoteVolume ?? 0));
+  return { results: allResults, errors };
+}
+
+/* =========================================================================
+   MARKET CLIMATE
+   ========================================================================= */
+
+// Computes MC-1h/4h/1d as a full time series (not just the latest value), so
+// it can be charted. Returns { times, quote:{h1,h4,d1}, btcRel:{h1,h4,d1} },
+// each an array aligned to `times`.
+function computeClimateSeries(basketCloses, btcCloses, btcTimes, offsets) {
+  const maxOffset = Math.max(...Object.values(offsets));
+  const n = btcCloses.length;
+  const times = [];
+  const quote = {}; const btcRel = {};
+  for (const label of Object.keys(offsets)) { quote[label] = []; btcRel[label] = []; }
+
+  for (let i = maxOffset; i < n; i++) {
+    times.push(btcTimes[i]);
+    for (const [label, offset] of Object.entries(offsets)) {
+      const quoteChanges = [];
+      const btcRelChanges = [];
+      for (const closes of basketCloses) {
+        if (i >= closes.length || i - offset < 0) continue;
+        const prev = closes[i - offset];
+        if (!prev) continue;
+        const qc = ((closes[i] - prev) / prev) * 100;
+        if (Number.isFinite(qc)) quoteChanges.push(qc);
+
+        const bPrev = btcCloses[i - offset];
+        const bNow = btcCloses[i];
+        if (!bPrev || !bNow) continue;
+        const ratioNow = closes[i] / bNow;
+        const ratioPrev = prev / bPrev;
+        const rc = ((ratioNow - ratioPrev) / ratioPrev) * 100;
+        if (Number.isFinite(rc)) btcRelChanges.push(rc);
+      }
+      quote[label].push(quoteChanges.length ? quoteChanges.reduce((a, b) => a + b, 0) / quoteChanges.length : null);
+      btcRel[label].push(btcRelChanges.length ? btcRelChanges.reduce((a, b) => a + b, 0) / btcRelChanges.length : null);
+    }
+  }
+  return { times, quote, btcRel };
+}
+
+async function computeMarketClimate({ exchangeId, quote, basketSize = 15, historyLimit = 100 }) {
+  const exchange = EXCHANGES[exchangeId];
+  const marketAdapter = exchange.markets.spot;
+  const [symbols, tickers] = await Promise.all([marketAdapter.listSymbols([quote]), marketAdapter.fetchTickers()]);
+
+  const btcSymbol = symbols.find((s) => s.base === "BTC");
+  if (!btcSymbol) throw new Error(`No BTC/${quote} pair on ${exchange.label}`);
+
+  const candidates = symbols
+    .filter((s) => s.base !== "BTC" && !STABLE_BASES.has(s.base))
+    .map((s) => ({ ...s, volume: tickers.get(s.raw)?.quoteVolume ?? 0 }))
+    .sort((a, b) => b.volume - a.volume)
+    .slice(0, basketSize);
+
+  const btcCandles = await marketAdapter.fetchKlines(btcSymbol.raw, "1h", historyLimit);
+  const btcCloses = btcCandles.map((c) => c.close);
+  const btcTimes = btcCandles.map((c) => c.time);
+
+  const basketCloses = [];
+  await mapLimit(candidates, 6, async (s) => {
+    try {
+      const candles = await marketAdapter.fetchKlines(s.raw, "1h", historyLimit);
+      basketCloses.push(candles.map((c) => c.close));
+    } catch { /* skip symbol on failure */ }
+  });
+
+  const offsets = { h1: 1, h4: 4, d1: 24 };
+  const { times, quote: quoteSeries, btcRel: btcRelSeries } = computeClimateSeries(basketCloses, btcCloses, btcTimes, offsets);
+
+  // Latest point of each series doubles as the snapshot shown in the summary cards.
+  const lastIdx = times.length - 1;
+  const quoteClimate = {}; const btcRel = {};
+  for (const label of Object.keys(offsets)) {
+    quoteClimate[label] = lastIdx >= 0 ? quoteSeries[label][lastIdx] : null;
+    btcRel[label] = lastIdx >= 0 ? btcRelSeries[label][lastIdx] : null;
+  }
+
+  return {
+    quoteClimate, btcRel, basketCount: basketCloses.length, quote, exchangeLabel: exchange.label,
+    series: { times, quote: quoteSeries, btcRel: btcRelSeries },
+  };
+}
+
+/* =========================================================================
+   GAINERS & LOSERS
+   ========================================================================= */
+
+async function computeGainersLosers({ exchangeIds, quotes, markets, filters = {}, limit = 10 }) {
+  const all = [];
+  const errors = [];
+  for (const exchangeId of exchangeIds) {
+    const exchange = EXCHANGES[exchangeId];
+    if (!exchange) continue;
+    for (const marketId of markets) {
+      const marketAdapter = exchange.markets[marketId];
+      if (!marketAdapter) continue; // e.g. MEXC futures — silently skip, no need to error on every refresh
+      try {
+        const [symbols, tickers] = await Promise.all([marketAdapter.listSymbols(quotes), marketAdapter.fetchTickers()]);
+        for (const s of symbols) {
+          const t = tickers.get(s.raw);
+          if (!t || t.changePct == null) continue;
+          if (!tickerPassesFilters(t, filters)) continue;
+          all.push({ exchange: exchange.id, exchangeLabel: exchange.label, market: marketId, symbol: s.symbol, raw: s.raw, price: t.price, changePct: t.changePct, quoteVolume: t.quoteVolume });
+        }
+      } catch (err) {
+        errors.push({ exchangeId, message: `${marketId}: ${err.message}` });
+      }
+    }
+  }
+  const sorted = all.slice().sort((a, b) => b.changePct - a.changePct);
+  return { gainers: sorted.slice(0, limit), losers: sorted.slice(-limit).reverse(), errors };
+}
+
+/* =========================================================================
+   FEAR & GREED
+   ========================================================================= */
+
+async function fetchFearGreed() {
+  const res = await fetch("https://api.alternative.me/fng/?limit=1&format=json");
+  if (!res.ok) throw new Error(`Fear & Greed ${res.status}`);
+  const json = await res.json();
+  const entry = json.data?.[0];
+  if (!entry) throw new Error("No Fear & Greed data");
+  return { value: Number(entry.value), classification: entry.value_classification };
+}
+
+function fngColor(value) {
+  if (value == null) return "#8b93a1";
+  if (value <= 24) return "#f0546b";
+  if (value <= 44) return "#e08a4f";
+  if (value <= 55) return "#c9a227";
+  if (value <= 75) return "#8fd66a";
+  return "#3dd68c";
+}
+
+/* =========================================================================
+   ALTRADY DEEPLINK
+   ========================================================================= */
+
+// Best-effort TradingView chart links — TradingView's exact symbol/exchange
+// naming isn't independently verified for every pair here (especially
+// Hyperliquid), so treat these as a reasonable starting point.
+function tradingViewLink(r) {
+  const [base, quote] = r.symbol.split("/");
+  const tvExchange = { binance: "BINANCE", mexc: "MEXC", bitvavo: "BITVAVO", hyperliquid: "HYPERLIQUID" }[r.exchange] || r.exchange.toUpperCase();
+  const suffix = r.market === "futures" ? ".P" : "";
+  const tvSymbol = `${tvExchange}:${base}${quote}${suffix}`;
+  return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tvSymbol)}`;
+}
+
+function altradyLink(exchangeId, marketType, raw, base, quote) {
+  const exMap = { binance: "binance", mexc: "mexc", bitvavo: "bitvavo", hyperliquid: "hyperliquid", okx: "okx" };
+  const exchange = exMap[exchangeId] || exchangeId;
+  const type = marketType === "spot" ? "spot" : "futures"; // Altrady lists Stock Perpetuals under its Futures tab too
+  return `https://app.altrady.com/dashboard?market=${exchange}&type=${type}&pair=${base}_${quote}`;
+}
+
+/* =========================================================================
+   STORAGE
+   ========================================================================= */
+
+const STORAGE_KEY = "market-scanner:strategies";
+
+function loadStrategies() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveStrategiesToStorage(strategies) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(strategies)); } catch {}
+}
+
+/* =========================================================================
+   UI STATE
+   ========================================================================= */
+
+const state = {
+  activeTab: "results",
+  conditions: [newCondition()],
+  strategyName: "",
+  strategySide: "long",
+  selectedStrategyKeys: ["builtin:RSI oversold"],
+  trendFilters: ["bullish", "neutral", "bearish"],
+  soundAlertsOn: false,
+  knownMatchKeys: new Set(),
+  hasScannedOnce: false,
+  savedStrategies: loadStrategies(),
+  exchangeIds: ["binance", "mexc", "bitvavo", "hyperliquid", "okx"],
+  quotes: ["USDT", "USDC", "USD"],
+  markets: ["spot"],
+  timeframes: ["1h"],
+  search: "",
+  minVolume: null,
+  minPrice: null,
+  changeFrom: null,
+  changeTo: null,
+  autoRefreshMinutes: 0,
+  nextRefreshAt: null,
+  scanning: false,
+  progress: null,
+  results: [],
+  errors: [],
+  lastScanAt: null,
+
+  btcTicker: null,
+  fng: null,
+
+  climate: null,
+  climateLoading: false,
+  climateError: null,
+
+  gainersLosers: null,
+  glLoading: false,
+  glErrors: [],
+};
+
+const TABS = [
+  { id: "results", label: "Scanner results" },
+  { id: "climate", label: "Market climate" },
+  { id: "gainersLosers", label: "Gainers & losers" },
+];
+
+/* =========================================================================
+   FORMATTING HELPERS
+   ========================================================================= */
+
+function fmtPrice(p) {
+  if (p == null) return "—";
+  if (p >= 1000) return p.toFixed(2);
+  if (p >= 1) return p.toFixed(4);
+  return p.toPrecision(4);
+}
+
+function fmtVolume(v) {
+  if (v == null) return "—";
+  if (v >= 1e9) return (v / 1e9).toFixed(2) + "B";
+  if (v >= 1e6) return (v / 1e6).toFixed(2) + "M";
+  if (v >= 1e3) return (v / 1e3).toFixed(1) + "K";
+  return v.toFixed(0);
+}
+
+function fmtPct(v) {
+  if (v == null) return "—";
+  return `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
+}
+
+function marketLabel(market) {
+  if (market === "futures") return "Futures";
+  if (market === "stocks") return "Stocks";
+  return "Spot";
+}
+
+function fmtBB(v) {
+  if (v == null) return "—";
+  return `${(v * 100).toFixed(1)}%`;
+}
+
+function fmtCandleRange(openTime, timeframe) {
+  if (openTime == null) return "—";
+  const durationMs = TIMEFRAME_MS[timeframe] || 0;
+  const closeTime = openTime + durationMs;
+  const pad = (n) => String(n).padStart(2, "0");
+  const fmt = (ts) => {
+    const d = new Date(ts);
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  return `${fmt(openTime)}-${fmt(closeTime)}`;
+}
+
+function bbClass(v) {
+  if (v == null) return "muted";
+  if (v <= 0.1) return "positive";  // near/below lower band — classic oversold read
+  if (v >= 0.9) return "negative";  // near/above upper band — classic overbought read
+  return "muted";
+}
+
+function pctClass(v) {
+  if (v == null) return "muted";
+  return v >= 0 ? "positive" : "negative";
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str ?? "";
+  return div.innerHTML;
+}
+
+function exchangeErrorHint(exchangeId, message) {
+  if (exchangeId === "mexc") {
+    return `MEXC: couldn't fetch data (${message}). MEXC's public API doesn't send CORS headers, so browsers block it directly — set a CORS proxy in Scan setup and use "Test MEXC connection" to verify it, or unselect MEXC.`;
+  }
+  return `${exchangeId}: couldn't fetch data (${message}). Often a CORS restriction on that exchange — the other exchanges keep working.`;
+}
+
+/* =========================================================================
+   RENDERING: HEADER
+   ========================================================================= */
+
+function renderHeaderBadges() {
+  const el = document.getElementById("headerBadges");
+  el.innerHTML = "";
+
+  const btcBadge = document.createElement("div");
+  btcBadge.className = "badge";
+  if (state.btcTicker) {
+    btcBadge.innerHTML = `
+      <span class="label">BTC/USDT</span>
+      <span class="value">$${fmtPrice(state.btcTicker.price)}</span>
+      <span class="pill ${pctClass(state.btcTicker.changePct)}" style="background:${state.btcTicker.changePct >= 0 ? '#0f2b1f' : '#2b0f16'};">${fmtPct(state.btcTicker.changePct)}</span>
+    `;
+  } else {
+    btcBadge.innerHTML = `<span class="label">BTC/USDT</span><span class="value muted">loading…</span>`;
+  }
+  el.appendChild(btcBadge);
+
+  const fngBadge = document.createElement("div");
+  fngBadge.className = "badge";
+  if (state.fng) {
+    fngBadge.innerHTML = `
+      <span class="label">Fear &amp; Greed</span>
+      <span class="value" style="color:${fngColor(state.fng.value)};">${state.fng.value}</span>
+      <span class="muted" style="font-size:12px;">${state.fng.classification}</span>
+    `;
+  } else {
+    fngBadge.innerHTML = `<span class="label">Fear &amp; Greed</span><span class="value muted">loading…</span>`;
+  }
+  el.appendChild(fngBadge);
+}
+
+async function loadHeaderData() {
+  try {
+    const tickers = await EXCHANGES.binance.markets.spot.fetchTickers();
+    const t = tickers.get("BTCUSDT");
+    if (t) state.btcTicker = t;
+  } catch { /* keep loading state */ }
+  renderHeaderBadges();
+
+  try {
+    state.fng = await fetchFearGreed();
+  } catch { /* keep loading state */ }
+  renderHeaderBadges();
+}
+
+/* =========================================================================
+   RENDERING: TABS
+   ========================================================================= */
+
+function renderTabs() {
+  const el = document.getElementById("tabRow");
+  el.innerHTML = "";
+  TABS.forEach((tab) => {
+    const btn = document.createElement("button");
+    btn.className = "tab-btn" + (state.activeTab === tab.id ? " tab-active" : "");
+    btn.textContent = tab.label;
+    btn.addEventListener("click", () => {
+      state.activeTab = tab.id;
+      renderTabs();
+      renderMain();
+      if (tab.id === "climate" && !state.climate && !state.climateLoading) loadClimate();
+      if (tab.id === "gainersLosers" && !state.gainersLosers && !state.glLoading) loadGainersLosers();
+    });
+    el.appendChild(btn);
+  });
+}
+
+/* =========================================================================
+   RENDERING: SCAN CONTROLS
+   ========================================================================= */
+
+function renderChips(containerId, items, isActive, onToggle) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = "";
+  items.forEach((item) => {
+    const id = typeof item === "string" ? item : item.id;
+    const label = typeof item === "string" ? item : item.label;
+    const btn = document.createElement("button");
+    btn.className = "chip" + (isActive(id) ? " chip-active" : "");
+    btn.textContent = label;
+    btn.addEventListener("click", () => onToggle(id));
+    el.appendChild(btn);
+  });
+}
+
+function toggleInArray(arr, id) {
+  const idx = arr.indexOf(id);
+  if (idx === -1) arr.push(id); else arr.splice(idx, 1);
+}
+
+function renderScanControls() {
+  renderChips("exchangeChips", Object.values(EXCHANGES).map((e) => ({ id: e.id, label: e.label })),
+    (id) => state.exchangeIds.includes(id),
+    (id) => { toggleInArray(state.exchangeIds, id); renderScanControls(); });
+
+  renderChips("quoteChips", AVAILABLE_QUOTES,
+    (id) => state.quotes.includes(id),
+    (id) => { toggleInArray(state.quotes, id); renderScanControls(); });
+
+  renderChips("marketChips", MARKETS,
+    (id) => state.markets.includes(id),
+    (id) => { toggleInArray(state.markets, id); renderScanControls(); });
+
+  renderChips("timeframeChips", TIMEFRAMES,
+    (id) => state.timeframes.includes(id),
+    (id) => { toggleInArray(state.timeframes, id); renderScanControls(); });
+
+  const scanBtn = document.getElementById("scanBtn");
+  scanBtn.textContent = state.scanning ? "Scanning…" : "Scan now";
+  scanBtn.disabled = state.scanning || state.exchangeIds.length === 0 || state.quotes.length === 0 || state.timeframes.length === 0 || state.markets.length === 0;
+
+  const progressHint = document.getElementById("progressHint");
+  progressHint.textContent = state.scanning && state.progress
+    ? `${state.progress.exchangeId} (${state.progress.market}): ${state.progress.done}/${state.progress.total}`
+    : "";
+}
+
+/* =========================================================================
+   RENDERING: STRATEGY BUILDER
+   ========================================================================= */
+
+function renderSideToggle() {
+  const el = document.getElementById("sideToggle");
+  el.innerHTML = "";
+  [["long", "Long"], ["short", "Short"]].forEach(([id, label]) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "side-btn" + (state.strategySide === id ? ` side-${id}-active` : "");
+    btn.textContent = label;
+    btn.addEventListener("click", () => {
+      state.strategySide = id;
+      renderSideToggle();
+    });
+    el.appendChild(btn);
+  });
+}
+
+function allStrategiesList() {
+  const builtins = BUILT_IN_STRATEGIES.map((s) => ({ key: `builtin:${s.name}`, kind: "builtin", name: s.name, side: s.side || "long", conditions: s.conditions, description: s.description }));
+  const customs = state.savedStrategies.map((s) => ({ key: `custom:${s.name}`, kind: "custom", name: s.name, side: s.side || "long", conditions: s.conditions }));
+  return [...builtins, ...customs];
+}
+
+function renderStrategyChecklist() {
+  const el = document.getElementById("strategyChecklist");
+  el.innerHTML = "";
+  const list = allStrategiesList();
+  if (list.length === 0) {
+    el.innerHTML = '<p class="empty-hint">No strategies yet — build one below and hit Save.</p>';
+    return;
+  }
+  list.forEach((strat) => {
+    const row = document.createElement("div");
+    row.className = "strat-check-row";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = state.selectedStrategyKeys.includes(strat.key);
+    checkbox.addEventListener("change", () => {
+      toggleInArray(state.selectedStrategyKeys, strat.key);
+    });
+    row.appendChild(checkbox);
+
+    const nameBtn = document.createElement("button");
+    nameBtn.type = "button";
+    nameBtn.className = "strat-name-btn";
+    nameBtn.textContent = strat.name;
+    if (strat.description) nameBtn.title = strat.description;
+    nameBtn.addEventListener("click", () => {
+      state.conditions = JSON.parse(JSON.stringify(strat.conditions)).map((c) => ({ ...c, id: uid() }));
+      state.strategyName = strat.name;
+      state.strategySide = strat.side || "long";
+      document.getElementById("strategyNameInput").value = strat.name;
+      renderSideToggle();
+      renderConditions();
+    });
+    row.appendChild(nameBtn);
+
+    const badge = document.createElement("span");
+    badge.className = "strat-kind-badge " + (strat.kind === "custom" ? "strat-kind-custom" : "strat-kind-builtin");
+    badge.textContent = strat.kind === "custom" ? "Custom" : "Built-in";
+    row.appendChild(badge);
+
+    if (strat.kind === "custom") {
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "strat-del-btn";
+      delBtn.title = "Delete this custom strategy";
+      delBtn.textContent = "🗑";
+      delBtn.addEventListener("click", () => {
+        state.savedStrategies = state.savedStrategies.filter((s) => s.name !== strat.name);
+        state.selectedStrategyKeys = state.selectedStrategyKeys.filter((k) => k !== strat.key);
+        saveStrategiesToStorage(state.savedStrategies);
+        renderStrategyChecklist();
+        renderStrategySave();
+      });
+      row.appendChild(delBtn);
+    }
+
+    el.appendChild(row);
+  });
+}
+
+const treeExpandedCategories = new Set(["Momentum"]);
+const treeExpandedGroups = new Set();
+
+function renderIndicatorTree() {
+  const el = document.getElementById("indicatorTree");
+  el.innerHTML = "";
+
+  INDICATOR_TREE.forEach((cat) => {
+    const catExpanded = treeExpandedCategories.has(cat.category);
+
+    const catHeader = document.createElement("button");
+    catHeader.type = "button";
+    catHeader.className = "tree-cat-header";
+    catHeader.innerHTML = `<span class="tree-chevron">${catExpanded ? "▾" : "▸"}</span>${cat.category}`;
+    catHeader.addEventListener("click", () => {
+      if (catExpanded) treeExpandedCategories.delete(cat.category); else treeExpandedCategories.add(cat.category);
+      renderIndicatorTree();
+    });
+    el.appendChild(catHeader);
+
+    if (!catExpanded) return;
+
+    const catBody = document.createElement("div");
+    catBody.className = "tree-cat-body";
+
+    cat.groups.forEach((group) => {
+      const groupKey = `${cat.category}:${group.name}`;
+      const groupExpanded = treeExpandedGroups.has(groupKey);
+
+      const groupHeader = document.createElement("button");
+      groupHeader.type = "button";
+      groupHeader.className = "tree-group-header";
+      groupHeader.innerHTML = `<span class="tree-chevron">${groupExpanded ? "▾" : "▸"}</span>${group.name}`;
+      groupHeader.addEventListener("click", () => {
+        if (groupExpanded) treeExpandedGroups.delete(groupKey); else treeExpandedGroups.add(groupKey);
+        renderIndicatorTree();
+      });
+      catBody.appendChild(groupHeader);
+
+      if (groupExpanded) {
+        const groupBody = document.createElement("div");
+        groupBody.className = "tree-group-body";
+        group.presets.forEach((preset) => {
+          const leafBtn = document.createElement("button");
+          leafBtn.type = "button";
+          leafBtn.className = "tree-leaf-btn";
+          leafBtn.textContent = preset.label;
+          leafBtn.addEventListener("click", () => addConditionFromPreset(preset));
+          groupBody.appendChild(leafBtn);
+        });
+        catBody.appendChild(groupBody);
+      }
+    });
+
+    el.appendChild(catBody);
+  });
+}
+
+// Turns a tree leaf into a fully-formed condition with a sensible default
+// operator/threshold, then drops it into the editor's condition list — every
+// field on it (including the ones set here) stays editable afterwards.
+function addConditionFromPreset(preset) {
+  const c = newCondition();
+  const oversoldFamily = ["RSI", "STOCH_K", "STOCH_D", "STOCH_RSI_K", "STOCH_RSI_D", "MFI"];
+
+  if (preset.indicator === "SMA" || preset.indicator === "EMA") {
+    // "MA50" etc. reads most naturally as "price crosses above MA50".
+    c.indicator = "PRICE";
+    c.operator = "crosses_above";
+    c.compareType = "indicator";
+    c.compareIndicator = preset.indicator;
+    c.comparePeriod = preset.period;
+  } else if (preset.indicator === "PSAR") {
+    c.indicator = "PRICE";
+    c.operator = "crosses_above";
+    c.compareType = "indicator";
+    c.compareIndicator = "PSAR";
+  } else if (preset.indicator === "MACD_LINE") {
+    c.indicator = "MACD_LINE";
+    c.macdFast = preset.macdFast; c.macdSlow = preset.macdSlow; c.macdSignal = preset.macdSignal;
+    c.operator = "crosses_above";
+    c.compareType = "indicator";
+    c.compareIndicator = "MACD_SIGNAL";
+    c.macdFast = preset.macdFast; c.macdSlow = preset.macdSlow; c.macdSignal = preset.macdSignal;
+  } else if (preset.indicator === "BB_PERCENT") {
+    c.indicator = "BB_PERCENT";
+    c.period = preset.period; c.extra1 = preset.extra1;
+    c.operator = "<"; c.compareType = "value"; c.value = 0.05;
+  } else {
+    c.indicator = preset.indicator;
+    if (preset.period != null) c.period = preset.period;
+    if (preset.extra1 != null) c.extra1 = preset.extra1;
+    if (preset.extra2 != null) c.extra2 = preset.extra2;
+    if (oversoldFamily.includes(preset.indicator)) {
+      c.operator = "<"; c.compareType = "value"; c.value = 30;
+    }
+  }
+
+  state.conditions.push(c);
+  renderConditions();
+}
+
+function renderPresets() {
+  const el = document.getElementById("presetRow");
+  el.innerHTML = "";
+  BUILT_IN_STRATEGIES.forEach((strat) => {
+    const btn = document.createElement("button");
+    btn.className = "preset-chip";
+    btn.textContent = strat.name;
+    btn.title = strat.description;
+    btn.addEventListener("click", () => {
+      state.conditions = JSON.parse(JSON.stringify(strat.conditions)).map((c) => ({ ...c, id: uid() }));
+      state.strategyName = strat.name;
+      state.strategySide = strat.side || "long";
+      document.getElementById("strategyNameInput").value = strat.name;
+      renderSideToggle();
+      renderConditions();
+    });
+    el.appendChild(btn);
+  });
+}
+
+function renderExtraInputs(container, condition, meta, prefix, update) {
+  if (!meta?.extras) return;
+  const wrap = document.createElement("span");
+  wrap.className = "extra-params";
+  meta.extras.forEach((ex, i) => {
+    const key = prefix + (i === 0 ? "Extra1" : "Extra2");
+    const stateKey = i === 0 ? (prefix === "compare" ? "compareExtra1" : "extra1") : (prefix === "compare" ? "compareExtra2" : "extra2");
+    const input = document.createElement("input");
+    input.type = "number"; input.title = ex.label; input.step = "any";
+    input.value = condition[stateKey] != null ? condition[stateKey] : ex.default;
+    input.addEventListener("change", (e) => update({ [stateKey]: Number(e.target.value) }));
+    wrap.appendChild(input);
+  });
+  container.appendChild(wrap);
+}
+
+function populateIndicatorSelect(selectEl, list, selectedId) {
+  selectEl.innerHTML = "";
+  INDICATOR_CATEGORY_ORDER.forEach((cat) => {
+    const items = list.filter((i) => (i.category || "Other") === cat);
+    if (items.length === 0) return;
+    const group = document.createElement("optgroup");
+    group.label = cat;
+    items.forEach((i) => {
+      const opt = document.createElement("option");
+      opt.value = i.id; opt.textContent = i.label;
+      if (i.id === selectedId) opt.selected = true;
+      group.appendChild(opt);
+    });
+    selectEl.appendChild(group);
+  });
+}
+
+function renderConditionRow(condition) {
+  const meta = indicatorMeta(condition.indicator);
+  const compareMeta = indicatorMeta(condition.compareIndicator);
+  const isCrossOperator = condition.operator === "crosses_above" || condition.operator === "crosses_below";
+
+  const row = document.createElement("div");
+  row.className = "condition-row";
+
+  function update(patch) {
+    Object.assign(condition, patch);
+    renderConditions();
+  }
+
+  function updateIndicator(newIndicator) {
+    const newMeta = indicatorMeta(newIndicator);
+    const patch = { indicator: newIndicator, period: newMeta?.defaultPeriod ?? condition.period, extra1: null, extra2: null };
+    if (newMeta?.extras) {
+      newMeta.extras.forEach((ex, i) => { patch[i === 0 ? "extra1" : "extra2"] = ex.default; });
+    }
+    update(patch);
+  }
+
+  const indicatorSelect = document.createElement("select");
+  populateIndicatorSelect(indicatorSelect, INDICATORS, condition.indicator);
+  indicatorSelect.addEventListener("change", (e) => updateIndicator(e.target.value));
+  row.appendChild(indicatorSelect);
+
+  if (meta?.needsPeriod) {
+    const periodInput = document.createElement("input");
+    periodInput.type = "number"; periodInput.className = "period-input"; periodInput.min = 2;
+    periodInput.value = condition.period; periodInput.title = "Period";
+    periodInput.addEventListener("change", (e) => update({ period: Number(e.target.value) }));
+    row.appendChild(periodInput);
+  }
+
+  if (meta?.isMacd) {
+    const wrap = document.createElement("span");
+    wrap.className = "macd-params";
+    [["macdFast", "Fast EMA"], ["macdSlow", "Slow EMA"], ["macdSignal", "Signal"]].forEach(([key, title]) => {
+      const input = document.createElement("input");
+      input.type = "number"; input.className = "period-input"; input.title = title;
+      input.value = condition[key];
+      input.addEventListener("change", (e) => update({ [key]: Number(e.target.value) }));
+      wrap.appendChild(input);
+    });
+    row.appendChild(wrap);
+  }
+
+  if (meta?.extras) renderExtraInputs(row, condition, meta, "", update);
+
+  const operatorSelect = document.createElement("select");
+  OPERATORS.forEach((o) => {
+    const opt = document.createElement("option");
+    opt.value = o.id; opt.textContent = o.label;
+    if (o.id === condition.operator) opt.selected = true;
+    operatorSelect.appendChild(opt);
+  });
+  operatorSelect.addEventListener("change", (e) => update({ operator: e.target.value }));
+  row.appendChild(operatorSelect);
+
+  const compareTypeSelect = document.createElement("select");
+  [["value", "a value"], ["indicator", "an indicator"]].forEach(([val, label]) => {
+    const opt = document.createElement("option");
+    opt.value = val; opt.textContent = label;
+    if (val === condition.compareType) opt.selected = true;
+    compareTypeSelect.appendChild(opt);
+  });
+  compareTypeSelect.addEventListener("change", (e) => update({ compareType: e.target.value }));
+  row.appendChild(compareTypeSelect);
+
+  if (condition.compareType === "value") {
+    const valueInput = document.createElement("input");
+    valueInput.type = "number"; valueInput.className = "value-input"; valueInput.step = "any";
+    valueInput.value = condition.value;
+    valueInput.addEventListener("change", (e) => update({ value: Number(e.target.value) }));
+    row.appendChild(valueInput);
+  } else {
+    const compareIndicatorSelect = document.createElement("select");
+    populateIndicatorSelect(compareIndicatorSelect, INDICATORS.filter((i) => i.id !== "CHANGE_24H"), condition.compareIndicator);
+    compareIndicatorSelect.addEventListener("change", (e) => {
+      const newMeta = indicatorMeta(e.target.value);
+      const patch = { compareIndicator: e.target.value, comparePeriod: newMeta?.defaultPeriod ?? condition.comparePeriod, compareExtra1: null, compareExtra2: null };
+      if (newMeta?.extras) newMeta.extras.forEach((ex, i) => { patch[i === 0 ? "compareExtra1" : "compareExtra2"] = ex.default; });
+      update(patch);
+    });
+    row.appendChild(compareIndicatorSelect);
+
+    if (compareMeta?.needsPeriod) {
+      const comparePeriodInput = document.createElement("input");
+      comparePeriodInput.type = "number"; comparePeriodInput.className = "period-input"; comparePeriodInput.min = 2;
+      comparePeriodInput.value = condition.comparePeriod; comparePeriodInput.title = "Period";
+      comparePeriodInput.addEventListener("change", (e) => update({ comparePeriod: Number(e.target.value) }));
+      row.appendChild(comparePeriodInput);
+    }
+    if (compareMeta?.extras) renderExtraInputs(row, condition, compareMeta, "compare", update);
+  }
+
+  if (isCrossOperator) {
+    const hint = document.createElement("span");
+    hint.className = "hint"; hint.textContent = "on the latest closed candle";
+    row.appendChild(hint);
+  }
+
+  const removeBtn = document.createElement("button");
+  removeBtn.className = "icon-btn"; removeBtn.title = "Remove condition"; removeBtn.textContent = "✕";
+  removeBtn.addEventListener("click", () => {
+    state.conditions = state.conditions.filter((c) => c.id !== condition.id);
+    renderConditions();
+  });
+  row.appendChild(removeBtn);
+
+  return row;
+}
+
+function renderConditions() {
+  const list = document.getElementById("conditionsList");
+  list.innerHTML = "";
+  if (state.conditions.length === 0) {
+    const p = document.createElement("p");
+    p.className = "empty-hint";
+    p.textContent = "No conditions yet — add one to start building your strategy, or pick a built-in one above.";
+    list.appendChild(p);
+  } else {
+    state.conditions.forEach((c) => list.appendChild(renderConditionRow(c)));
+  }
+  renderStrategySave();
+}
+
+function renderStrategySave() {
+  const deleteBtn = document.getElementById("deleteStrategyBtn");
+  const exists = state.savedStrategies.some((s) => s.name === state.strategyName);
+  deleteBtn.style.display = state.strategyName && exists ? "" : "none";
+}
+
+/* =========================================================================
+   RENDERING: MAIN COLUMN (per tab)
+   ========================================================================= */
+
+function renderMain() {
+  const mainCol = document.getElementById("mainCol");
+  mainCol.innerHTML = "";
+  if (state.activeTab === "results") mainCol.appendChild(buildResultsPanel());
+  else if (state.activeTab === "climate") mainCol.appendChild(buildClimatePanel());
+  else if (state.activeTab === "gainersLosers") mainCol.appendChild(buildGainersLosersPanel());
+}
+
+function buildResultsPanel() {
+  const section = document.createElement("section");
+  section.className = "panel results-panel";
+
+  const header = document.createElement("div");
+  header.className = "panel-header";
+  const count = state.results.length;
+  header.innerHTML = `
+    <h2>Matches</h2>
+    <span class="panel-subtitle">${count} pair${count === 1 ? "" : "s"} matched${state.lastScanAt ? ` · last scan ${state.lastScanAt}` : ""}</span>
+  `;
+  section.appendChild(header);
+
+  if (state.errors.length > 0) {
+    const banner = document.createElement("div");
+    banner.className = "error-banner";
+    state.errors.forEach((e) => {
+      const p = document.createElement("p");
+      p.textContent = exchangeErrorHint(e.exchangeId, e.message);
+      banner.appendChild(p);
+    });
+    section.appendChild(banner);
+  }
+
+  if (state.results.length === 0) {
+    const p = document.createElement("p");
+    p.className = "empty-hint";
+    p.textContent = "No matches yet. Configure a strategy and run a scan — results land here.";
+    section.appendChild(p);
+    return section;
+  }
+
+  const wrap = document.createElement("div");
+  wrap.className = "table-wrap";
+  const table = document.createElement("table");
+  table.innerHTML = `<thead><tr><th>Exchange</th><th>Market</th><th>Candle</th><th>Pair</th><th>Timeframe</th><th>Strategy</th><th>Side</th><th>Trend</th><th>BB %B</th><th>Price</th><th>24h %</th><th>24h volume</th><th>Links</th></tr></thead>`;
+  const tbody = document.createElement("tbody");
+
+  state.results.forEach((r) => {
+    const tr = document.createElement("tr");
+    const [base, quoteAsset] = r.symbol.split("/");
+    const trendOpt = TREND_OPTIONS.find((t) => t.id === r.trend);
+    tr.innerHTML = `
+      <td class="mono muted">${r.exchangeLabel}</td>
+      <td><span class="market-badge market-${r.market}">${marketLabel(r.market)}</span></td>
+      <td class="mono muted" style="white-space:nowrap;">${fmtCandleRange(r.candleTime, r.timeframe)}</td>
+      <td class="mono strong">${r.symbol}</td>
+      <td class="mono muted">${r.timeframe}</td>
+      <td class="muted">${escapeHtml(r.strategyName)}</td>
+      <td><span class="side-badge side-badge-${r.side === "short" ? "short" : "long"}">${r.side === "short" ? "Short" : "Long"}</span></td>
+      <td>${trendOpt ? `<span class="market-badge" style="background:${trendOpt.bg};color:${trendOpt.color};">${trendOpt.label}</span>` : '<span class="muted">—</span>'}</td>
+      <td class="mono ${bbClass(r.bbPercent)}">${fmtBB(r.bbPercent)}</td>
+      <td class="mono">${fmtPrice(r.price)}</td>
+      <td class="mono ${pctClass(r.changePct)}">${fmtPct(r.changePct)}</td>
+      <td class="mono muted">${fmtVolume(r.quoteVolume)}</td>
+      <td>
+        <div class="link-icons">
+          <a class="link-btn" target="_blank" rel="noopener" href="${EXCHANGES[r.exchange].markets[r.market].deeplink(r.raw)}" title="Open on ${r.exchangeLabel}">🏦</a>
+          <a class="link-btn" target="_blank" rel="noopener" href="${tradingViewLink(r)}" title="Open on TradingView">📈</a>
+          <a class="link-btn" target="_blank" rel="noopener" href="${altradyLink(r.exchange, r.market, r.raw, base, quoteAsset)}" title="Open on Altrady">⚡</a>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  section.appendChild(wrap);
+  return section;
+}
+
+function buildClimatePanel() {
+  const section = document.createElement("section");
+  section.className = "panel results-panel";
+
+  const header = document.createElement("div");
+  header.className = "panel-header";
+  header.innerHTML = `<h2>Market climate</h2><span class="panel-subtitle">"Should I trade or should I wait?" — average altcoin move over 1h / 4h / 24h.</span>`;
+  const refreshBtn = document.createElement("button");
+  refreshBtn.className = "btn-ghost"; refreshBtn.textContent = "Refresh";
+  refreshBtn.addEventListener("click", () => loadClimate());
+  header.appendChild(refreshBtn);
+  section.appendChild(header);
+
+  if (state.climateLoading) {
+    const p = document.createElement("p");
+    p.className = "empty-hint"; p.textContent = "Computing market climate…";
+    section.appendChild(p);
+    return section;
+  }
+
+  if (state.climateError) {
+    const banner = document.createElement("div");
+    banner.className = "error-banner";
+    banner.innerHTML = `<p>Couldn't compute market climate. ${escapeHtml(state.climateError)}</p>`;
+    section.appendChild(banner);
+    return section;
+  }
+
+  if (!state.climate) {
+    const p = document.createElement("p");
+    p.className = "empty-hint"; p.textContent = "No data yet.";
+    section.appendChild(p);
+    return section;
+  }
+
+  const { quoteClimate, btcRel, basketCount, quote, exchangeLabel } = state.climate;
+
+  const note = document.createElement("p");
+  note.className = "panel-subtitle";
+  note.style.marginBottom = "14px";
+  note.textContent = `Based on the top ${basketCount} pairs by volume on ${exchangeLabel} (quoted in ${quote}), excluding BTC and stablecoins.`;
+  section.appendChild(note);
+
+  const grid = document.createElement("div");
+  grid.className = "climate-grid";
+
+  const rows = [["1h", "h1"], ["4h", "h4"], ["24h", "d1"]];
+
+  const btcCard = document.createElement("div");
+  btcCard.className = "climate-card";
+  btcCard.innerHTML = `<h3>vs BTC</h3>` + rows.map(([label, key]) => {
+    const v = btcRel[key];
+    return `<div class="climate-row"><span class="muted">MC ${label}</span><span class="${pctClass(v)}">${fmtPct(v)}</span></div>`;
+  }).join("");
+  grid.appendChild(btcCard);
+
+  const quoteCard = document.createElement("div");
+  quoteCard.className = "climate-card";
+  quoteCard.innerHTML = `<h3>vs ${quote}</h3>` + rows.map(([label, key]) => {
+    const v = quoteClimate[key];
+    return `<div class="climate-row"><span class="muted">MC ${label}</span><span class="${pctClass(v)}">${fmtPct(v)}</span></div>`;
+  }).join("");
+  grid.appendChild(quoteCard);
+
+  section.appendChild(grid);
+
+  const { series } = state.climate;
+  if (series && series.times.length > 1) {
+    const chartsWrap = document.createElement("div");
+    chartsWrap.className = "climate-grid";
+    chartsWrap.style.marginTop = "16px";
+
+    const btcChartCard = document.createElement("div");
+    btcChartCard.className = "climate-card";
+    btcChartCard.innerHTML = `<h3>vs BTC — history</h3>`;
+    const btcChartWrap = document.createElement("div");
+    btcChartWrap.className = "climate-chart-wrap";
+    btcChartCard.appendChild(buildClimateLegend());
+    btcChartCard.appendChild(btcChartWrap);
+    chartsWrap.appendChild(btcChartCard);
+    renderClimateChart(btcChartWrap, series.btcRel, series.times);
+
+    const quoteChartCard = document.createElement("div");
+    quoteChartCard.className = "climate-card";
+    quoteChartCard.innerHTML = `<h3>vs ${quote} — history</h3>`;
+    const quoteChartWrap = document.createElement("div");
+    quoteChartWrap.className = "climate-chart-wrap";
+    quoteChartCard.appendChild(buildClimateLegend());
+    quoteChartCard.appendChild(quoteChartWrap);
+    chartsWrap.appendChild(quoteChartCard);
+    renderClimateChart(quoteChartWrap, series.quote, series.times);
+
+    section.appendChild(chartsWrap);
+  }
+
+  return section;
+}
+
+function buildClimateLegend() {
+  const legend = document.createElement("div");
+  legend.className = "climate-legend";
+  legend.innerHTML = `
+    <span><span class="dot" style="background:#2f8fd6;"></span>MC 1h</span>
+    <span><span class="dot" style="background:#8791a3;"></span>MC 4h</span>
+    <span><span class="dot" style="background:#1e9e4f;"></span>MC 1d</span>
+  `;
+  return legend;
+}
+
+// Small dependency-free SVG line chart with a hover crosshair + tooltip,
+// used for the Market Climate history (no chart library needed for a
+// single-file app). `seriesData` = {h1:[...], h4:[...], d1:[...]}, all the
+// same length as `times` (epoch ms).
+function renderClimateChart(container, seriesData, times) {
+  container.innerHTML = "";
+  const width = 600, height = 220;
+  const padding = { top: 10, right: 10, bottom: 10, left: 44 };
+  const plotW = width - padding.left - padding.right;
+  const plotH = height - padding.top - padding.bottom;
+
+  const seriesConfig = [
+    { key: "h1", color: "#2f8fd6" },
+    { key: "h4", color: "#8791a3" },
+    { key: "d1", color: "#1e9e4f" },
+  ];
+
+  const n = times.length;
+  const allValues = seriesConfig.flatMap(({ key }) => seriesData[key]).filter((v) => v != null);
+  if (allValues.length === 0 || n < 2) {
+    container.innerHTML = '<p class="empty-hint">Not enough history yet — try Refresh again shortly.</p>';
+    return;
+  }
+  let minV = Math.min(...allValues, 0);
+  let maxV = Math.max(...allValues, 0);
+  if (minV === maxV) { minV -= 1; maxV += 1; }
+  const rangePad = (maxV - minV) * 0.1 || 1;
+  minV -= rangePad; maxV += rangePad;
+
+  function xFor(i) { return padding.left + (i / (n - 1)) * plotW; }
+  function yFor(v) { return padding.top + plotH - ((v - minV) / (maxV - minV)) * plotH; }
+
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("width", "100%");
+  svg.setAttribute("height", height);
+  svg.style.display = "block";
+  svg.style.overflow = "visible";
+
+  const zeroY = yFor(0);
+  const zeroLine = document.createElementNS(svgNS, "line");
+  zeroLine.setAttribute("x1", padding.left); zeroLine.setAttribute("x2", width - padding.right);
+  zeroLine.setAttribute("y1", zeroY); zeroLine.setAttribute("y2", zeroY);
+  zeroLine.setAttribute("stroke", "#d7dce2"); zeroLine.setAttribute("stroke-width", "1");
+  svg.appendChild(zeroLine);
+
+  const zeroLabel = document.createElementNS(svgNS, "text");
+  zeroLabel.setAttribute("x", padding.left - 6); zeroLabel.setAttribute("y", zeroY + 3);
+  zeroLabel.setAttribute("text-anchor", "end"); zeroLabel.setAttribute("font-size", "10");
+  zeroLabel.setAttribute("fill", "#8791a3"); zeroLabel.textContent = "0%";
+  svg.appendChild(zeroLabel);
+
+  const dots = {};
+  seriesConfig.forEach(({ key, color }) => {
+    const values = seriesData[key];
+    let d = "";
+    values.forEach((v, i) => {
+      if (v == null) return;
+      const x = xFor(i), y = yFor(v);
+      d += (d === "" ? "M" : "L") + x.toFixed(2) + "," + y.toFixed(2) + " ";
+    });
+    const path = document.createElementNS(svgNS, "path");
+    path.setAttribute("d", d.trim());
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", color);
+    path.setAttribute("stroke-width", "2");
+    path.setAttribute("stroke-linejoin", "round");
+    path.setAttribute("stroke-linecap", "round");
+    svg.appendChild(path);
+
+    const dot = document.createElementNS(svgNS, "circle");
+    dot.setAttribute("r", "4");
+    dot.setAttribute("fill", color);
+    dot.setAttribute("stroke", "#fff");
+    dot.setAttribute("stroke-width", "1.5");
+    dot.style.display = "none";
+    svg.appendChild(dot);
+    dots[key] = dot;
+  });
+
+  const crosshair = document.createElementNS(svgNS, "line");
+  crosshair.setAttribute("y1", padding.top); crosshair.setAttribute("y2", height - padding.bottom);
+  crosshair.setAttribute("stroke", "#b7c3d1"); crosshair.setAttribute("stroke-width", "1");
+  crosshair.setAttribute("stroke-dasharray", "3,3");
+  crosshair.style.display = "none";
+  svg.appendChild(crosshair);
+
+  const overlay = document.createElementNS(svgNS, "rect");
+  overlay.setAttribute("x", padding.left); overlay.setAttribute("y", padding.top);
+  overlay.setAttribute("width", Math.max(plotW, 0)); overlay.setAttribute("height", Math.max(plotH, 0));
+  overlay.setAttribute("fill", "transparent");
+  overlay.style.cursor = "crosshair";
+  svg.appendChild(overlay);
+
+  container.appendChild(svg);
+
+  const tooltip = document.createElement("div");
+  tooltip.className = "climate-tooltip";
+  container.appendChild(tooltip);
+
+  function fmtTime(ts) {
+    const d = new Date(ts);
+    return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+
+  function handleMove(clientX, clientY) {
+    const rect = svg.getBoundingClientRect();
+    if (rect.width === 0) return;
+    const relX = ((clientX - rect.left) / rect.width) * width;
+    let idx = Math.round(((relX - padding.left) / plotW) * (n - 1));
+    idx = Math.max(0, Math.min(n - 1, idx));
+
+    const x = xFor(idx);
+    crosshair.setAttribute("x1", x); crosshair.setAttribute("x2", x);
+    crosshair.style.display = "";
+
+    let anyValue = false;
+    seriesConfig.forEach(({ key }) => {
+      const v = seriesData[key][idx];
+      if (v == null) { dots[key].style.display = "none"; return; }
+      anyValue = true;
+      dots[key].setAttribute("cx", x);
+      dots[key].setAttribute("cy", yFor(v));
+      dots[key].style.display = "";
+    });
+
+    if (!anyValue) { tooltip.style.display = "none"; return; }
+
+    tooltip.style.display = "block";
+    tooltip.innerHTML = `
+      <div class="tt-date">${fmtTime(times[idx])}</div>
+      <div style="color:#5aa9e6;">MC-1h: ${fmtPct(seriesData.h1[idx])}</div>
+      <div style="color:#b7c0cc;">MC-4h: ${fmtPct(seriesData.h4[idx])}</div>
+      <div style="color:#5fce87;">MC-1d: ${fmtPct(seriesData.d1[idx])}</div>
+    `;
+
+    const containerRect = container.getBoundingClientRect();
+    const svgRect = svg.getBoundingClientRect();
+    let left = (svgRect.left - containerRect.left) + (x / width) * svgRect.width + 12;
+    if (left + 130 > containerRect.width) left = (svgRect.left - containerRect.left) + (x / width) * svgRect.width - 140;
+    tooltip.style.left = Math.max(0, left) + "px";
+    tooltip.style.top = "4px";
+  }
+
+  function handleLeave() {
+    crosshair.style.display = "none";
+    Object.values(dots).forEach((d) => (d.style.display = "none"));
+    tooltip.style.display = "none";
+  }
+
+  overlay.addEventListener("mousemove", (e) => handleMove(e.clientX, e.clientY));
+  overlay.addEventListener("mouseleave", handleLeave);
+  overlay.addEventListener("touchmove", (e) => {
+    if (e.touches?.[0]) handleMove(e.touches[0].clientX, e.touches[0].clientY);
+    e.preventDefault();
+  }, { passive: false });
+  overlay.addEventListener("touchend", handleLeave);
+}
+
+function buildGainersLosersPanel() {
+  const section = document.createElement("section");
+  section.className = "panel results-panel";
+
+  const header = document.createElement("div");
+  header.className = "panel-header";
+  header.innerHTML = `<h2>Gainers &amp; losers</h2><span class="panel-subtitle">Top 24h movers across your selected exchanges and quote assets.</span>`;
+  const refreshBtn = document.createElement("button");
+  refreshBtn.className = "btn-ghost"; refreshBtn.textContent = "Refresh";
+  refreshBtn.addEventListener("click", () => loadGainersLosers());
+  header.appendChild(refreshBtn);
+  section.appendChild(header);
+
+  if (state.glLoading) {
+    const p = document.createElement("p");
+    p.className = "empty-hint"; p.textContent = "Loading tickers…";
+    section.appendChild(p);
+    return section;
+  }
+
+  if (state.glErrors?.length > 0) {
+    const banner = document.createElement("div");
+    banner.className = "error-banner";
+    state.glErrors.forEach((e) => {
+      const p = document.createElement("p");
+      p.textContent = exchangeErrorHint(e.exchangeId, e.message);
+      banner.appendChild(p);
+    });
+    section.appendChild(banner);
+  }
+
+  if (!state.gainersLosers) {
+    const p = document.createElement("p");
+    p.className = "empty-hint"; p.textContent = "No data yet.";
+    section.appendChild(p);
+    return section;
+  }
+
+  function buildTable(rows, title) {
+    const card = document.createElement("div");
+    const h3 = document.createElement("h3");
+    h3.style.margin = "0 0 8px"; h3.style.fontSize = "13px"; h3.style.color = "#8b93a1"; h3.style.textTransform = "uppercase"; h3.style.letterSpacing = ".04em";
+    h3.textContent = title;
+    card.appendChild(h3);
+
+    const wrap = document.createElement("div");
+    wrap.className = "table-wrap";
+    const table = document.createElement("table");
+    table.innerHTML = `<thead><tr><th>Exchange</th><th>Market</th><th>Pair</th><th>Price</th><th>24h %</th></tr></thead>`;
+    const tbody = document.createElement("tbody");
+    rows.forEach((r) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="mono muted">${r.exchangeLabel}</td>
+        <td><span class="market-badge market-${r.market}">${marketLabel(r.market)}</span></td>
+        <td class="mono strong">${r.symbol}</td>
+        <td class="mono">${fmtPrice(r.price)}</td>
+        <td class="mono ${pctClass(r.changePct)}">${fmtPct(r.changePct)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    card.appendChild(wrap);
+    return card;
+  }
+
+  const grid = document.createElement("div");
+  grid.className = "gl-grid";
+  grid.appendChild(buildTable(state.gainersLosers.gainers, "Top gainers"));
+  grid.appendChild(buildTable(state.gainersLosers.losers, "Top losers"));
+  section.appendChild(grid);
+  return section;
+}
+
+/* =========================================================================
+   DATA LOADERS
+   ========================================================================= */
+
+async function loadClimate() {
+  state.climateLoading = true;
+  state.climateError = null;
+  renderMain();
+  try {
+    const exchangeId = state.exchangeIds[0] || "binance";
+    const quote = state.quotes.includes("USDT") ? "USDT" : (state.quotes[0] || "USDT");
+    state.climate = await computeMarketClimate({ exchangeId, quote });
+  } catch (err) {
+    const exchangeId = state.exchangeIds[0] || "binance";
+    state.climateError = exchangeErrorHint(exchangeId, err.message);
+  } finally {
+    state.climateLoading = false;
+    renderMain();
+  }
+}
+
+async function loadGainersLosers() {
+  state.glLoading = true;
+  renderMain();
+  try {
+    const { gainers, losers, errors } = await computeGainersLosers({ exchangeIds: state.exchangeIds, quotes: state.quotes, markets: state.markets, filters: currentFilters(), limit: 10 });
+    state.gainersLosers = { gainers, losers };
+    state.glErrors = errors;
+  } catch (err) {
+    state.glErrors = [{ exchangeId: "scan", message: err.message }];
+  } finally {
+    state.glLoading = false;
+    renderMain();
+  }
+}
+
+/* =========================================================================
+   EVENT WIRING
+   ========================================================================= */
+
+document.getElementById("searchInput").addEventListener("input", (e) => { state.search = e.target.value; });
+
+function currentFilters() {
+  return {
+    minVolume: state.minVolume,
+    minPrice: state.minPrice,
+    changeFrom: state.changeFrom,
+    changeTo: state.changeTo,
+  };
+}
+
+function numOrNull(value) {
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : null;
+}
+
+document.getElementById("minVolumeInput").addEventListener("input", (e) => { state.minVolume = numOrNull(e.target.value); });
+document.getElementById("minPriceInput").addEventListener("input", (e) => { state.minPrice = numOrNull(e.target.value); });
+document.getElementById("changeFromInput").addEventListener("input", (e) => { state.changeFrom = numOrNull(e.target.value); });
+document.getElementById("changeToInput").addEventListener("input", (e) => { state.changeTo = numOrNull(e.target.value); });
+
+const mexcProxyInput = document.getElementById("mexcProxyInput");
+mexcProxyInput.value = mexcProxyBase;
+mexcProxyInput.addEventListener("change", (e) => setMexcProxy(e.target.value));
+
+document.getElementById("mexcTestBtn").addEventListener("click", async () => {
+  const resultEl = document.getElementById("mexcTestResult");
+  resultEl.textContent = "Testing…";
+  resultEl.className = "hint";
+  try {
+    const tickers = await EXCHANGES.mexc.markets.spot.fetchTickers();
+    resultEl.textContent = `OK — ${tickers.size} tickers loaded.`;
+    resultEl.className = "hint positive";
+  } catch (err) {
+    resultEl.textContent = `Failed: ${err.message}`;
+    resultEl.className = "hint negative";
+  }
+});
+
+document.getElementById("addConditionBtn").addEventListener("click", () => {
+  state.conditions.push(newCondition());
+  renderConditions();
+});
+
+document.getElementById("strategyNameInput").addEventListener("input", (e) => {
+  state.strategyName = e.target.value;
+  renderStrategySave();
+});
+
+document.getElementById("saveStrategyBtn").addEventListener("click", () => {
+  const name = state.strategyName.trim();
+  if (!name) return;
+  state.savedStrategies = state.savedStrategies.filter((s) => s.name !== name);
+  state.savedStrategies.push({ name, conditions: state.conditions, side: state.strategySide });
+  saveStrategiesToStorage(state.savedStrategies);
+  const key = `custom:${name}`;
+  if (!state.selectedStrategyKeys.includes(key)) state.selectedStrategyKeys.push(key);
+  renderStrategySave();
+  renderStrategyChecklist();
+});
+
+document.getElementById("deleteStrategyBtn").addEventListener("click", () => {
+  state.savedStrategies = state.savedStrategies.filter((s) => s.name !== state.strategyName);
+  state.selectedStrategyKeys = state.selectedStrategyKeys.filter((k) => k !== `custom:${state.strategyName}`);
+  saveStrategiesToStorage(state.savedStrategies);
+  renderStrategySave();
+  renderStrategyChecklist();
+});
+
+function computeMatchKey(r) {
+  return `${r.exchange}|${r.market}|${r.raw}|${r.timeframe}|${r.strategyName}`;
+}
+
+function playAlertSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    function blip(freq, delay) {
+      setTimeout(() => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.32);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
+      }, delay);
+    }
+    blip(880, 0);
+    blip(1180, 150);
+  } catch (err) { /* Web Audio not available in this environment — fail silently */ }
+}
+
+function checkForNewSignalsAndAlert(results) {
+  const newKeys = new Set(results.map(computeMatchKey));
+  if (state.hasScannedOnce) {
+    const hasNew = [...newKeys].some((k) => !state.knownMatchKeys.has(k));
+    if (hasNew && state.soundAlertsOn) playAlertSound();
+  }
+  state.knownMatchKeys = newKeys;
+  state.hasScannedOnce = true;
+}
+
+async function performScan() {
+  if (state.scanning) return;
+
+  const strategies = allStrategiesList().filter((s) => state.selectedStrategyKeys.includes(s.key));
+  if (strategies.length === 0) {
+    state.errors = [{ exchangeId: "scan", message: "Select at least one strategy in the checklist above before scanning." }];
+    if (state.activeTab === "results") renderMain();
+    return;
+  }
+
+  state.scanning = true;
+  state.progress = null;
+  state.errors = [];
+  renderScanControls();
+
+  try {
+    const { results, errors } = await runScan({
+      exchangeIds: state.exchangeIds,
+      quotes: state.quotes,
+      timeframes: state.timeframes,
+      markets: state.markets,
+      strategies,
+      search: state.search,
+      filters: currentFilters(),
+      trendFilters: state.trendFilters,
+      onProgress: (p) => { state.progress = p; renderScanControls(); },
+    });
+    state.results = results;
+    state.errors = errors;
+    state.lastScanAt = new Date().toLocaleTimeString();
+    checkForNewSignalsAndAlert(results);
+  } catch (err) {
+    state.errors = [{ exchangeId: "scan", message: err.message }];
+  } finally {
+    state.scanning = false;
+    state.progress = null;
+    scheduleNextAutoRefresh();
+    renderScanControls();
+    if (state.activeTab === "results") renderMain();
+  }
+}
+
+document.getElementById("scanBtn").addEventListener("click", performScan);
+
+/* =========================================================================
+   AUTO-REFRESH
+   ========================================================================= */
+
+const AUTO_REFRESH_OPTIONS = [
+  { id: 0, label: "Off" },
+  { id: 1, label: "1m" },
+  { id: 3, label: "3m" },
+  { id: 5, label: "5m" },
+];
+
+let autoRefreshInterval = null;
+let autoRefreshCountdownInterval = null;
+
+function scheduleNextAutoRefresh() {
+  state.nextRefreshAt = state.autoRefreshMinutes > 0 ? Date.now() + state.autoRefreshMinutes * 60000 : null;
+  updateAutoRefreshHint();
+}
+
+function renderAutoRefreshChips() {
+  renderChips("autoRefreshChips", AUTO_REFRESH_OPTIONS,
+    (id) => state.autoRefreshMinutes === id,
+    (id) => {
+      state.autoRefreshMinutes = id;
+      setupAutoRefreshTimer();
+      renderAutoRefreshChips();
+    });
+}
+
+function renderTrendFilterChips() {
+  const el = document.getElementById("trendFilterChips");
+  el.innerHTML = "";
+  TREND_OPTIONS.forEach((opt) => {
+    const active = state.trendFilters.includes(opt.id);
+    const btn = document.createElement("button");
+    btn.className = "chip";
+    btn.textContent = opt.label;
+    if (active) {
+      btn.style.background = opt.bg;
+      btn.style.borderColor = opt.color;
+      btn.style.color = opt.color;
+      btn.style.fontWeight = "600";
+    }
+    btn.addEventListener("click", () => { toggleInArray(state.trendFilters, opt.id); renderTrendFilterChips(); });
+    el.appendChild(btn);
+  });
+}
+
+function renderSoundAlertChips() {
+  renderChips("soundAlertChips", [{ id: false, label: "Off" }, { id: true, label: "On" }],
+    (id) => state.soundAlertsOn === id,
+    (id) => { state.soundAlertsOn = id; renderSoundAlertChips(); });
+}
+
+function setupAutoRefreshTimer() {
+  if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+  if (autoRefreshCountdownInterval) clearInterval(autoRefreshCountdownInterval);
+
+  if (state.autoRefreshMinutes > 0) {
+    scheduleNextAutoRefresh();
+    autoRefreshInterval = setInterval(() => {
+      if (!state.scanning) performScan();
+    }, state.autoRefreshMinutes * 60000);
+    autoRefreshCountdownInterval = setInterval(updateAutoRefreshHint, 1000);
+  } else {
+    state.nextRefreshAt = null;
+    updateAutoRefreshHint();
+  }
+}
+
+function updateAutoRefreshHint() {
+  const hint = document.getElementById("autoRefreshHint");
+  if (!hint) return;
+  if (state.autoRefreshMinutes === 0) {
+    hint.textContent = "Off — scan manually with the button above.";
+    return;
+  }
+  if (state.scanning) {
+    hint.textContent = `Auto-refresh every ${state.autoRefreshMinutes}m — scanning now…`;
+    return;
+  }
+  if (state.nextRefreshAt == null) {
+    hint.textContent = `Auto-refresh every ${state.autoRefreshMinutes}m.`;
+    return;
+  }
+  const remainingMs = Math.max(0, state.nextRefreshAt - Date.now());
+  const mm = String(Math.floor(remainingMs / 60000)).padStart(2, "0");
+  const ss = String(Math.floor((remainingMs % 60000) / 1000)).padStart(2, "0");
+  hint.textContent = `Auto-refresh every ${state.autoRefreshMinutes}m — next scan in ${mm}:${ss}`;
+}
+
+/* =========================================================================
+   INITIAL RENDER
+   ========================================================================= */
+
+renderHeaderBadges();
+renderTabs();
+renderScanControls();
+renderSideToggle();
+renderTrendFilterChips();
+renderAutoRefreshChips();
+updateAutoRefreshHint();
+renderSoundAlertChips();
+renderPresets();
+renderIndicatorTree();
+renderStrategyChecklist();
+renderConditions();
+renderMain();
+loadHeaderData();
+</script>
+</body>
+</html>
